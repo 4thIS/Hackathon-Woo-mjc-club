@@ -153,6 +153,9 @@ export const api = {
   },
 
   // --- AI 초안 (§7) ---
+  /* 성향 설문 → 동아리 추천. 결과는 서버·브라우저 어디에도 저장하지 않는다 */
+  aiRecommend: (answers) => post('/ai/recommend', { answers }),
+
   aiDraft: ({ club_id, memo, photos = [], pdf }) => {
     const form = new FormData()
     form.append('club_id', String(club_id))

@@ -5,19 +5,23 @@
 """
 
 from fastapi import APIRouter, Depends, File, Form, UploadFile
+from pydantic import BaseModel
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from .. import errors
+from .. import enums, errors
 from ..config import settings
 from ..db import get_db
 from ..deps import verified_user
-from ..models import Club, User
+from ..models import Club, Post, User
 from ..security import decrypt_ai_key
-from ..services import ai_draft, pdf_text
+from ..services import ai_draft, ai_recommend, pdf_text
 
 router = APIRouter(tags=["ai"])
 
 MAX_PHOTO_BYTES = 8 * 1024 * 1024  # base64 로 실어 보내므로 무제한으로 받지 않는다
+RECENT_POSTS = 2  # 동아리마다 최신 공개 활동 몇 개를 재료로 줄지
+EXCERPT_LEN = 90
 
 
 @router.post("/ai/draft")
@@ -86,3 +90,82 @@ def draft(
         raise errors.ApiError(
             502, "AI_GATEWAY_ERROR", "AI 응답을 받지 못했습니다. 잠시 후 다시 시도해주세요."
         ) from e
+
+
+# ── 성향 설문 → 동아리 추천 ────────────────────────────────
+
+
+class RecommendIn(BaseModel):
+    answers: str  # 6문항 양자택일 결과. 예: "ABABBA"
+
+
+def _candidates(db: Session) -> list[dict]:
+    """활동중인 동아리 전부 + 각 동아리의 최신 공개 활동 몇 개.
+
+    후보를 모집중으로 좁히지 않는다 — 지금 데이터는 26곳 중 6곳만 모집중이라
+    후보가 너무 적어진다. 모집중을 우선하라는 지시는 프롬프트가 맡는다.
+    """
+    clubs = db.scalars(
+        select(Club).where(Club.status == enums.CLUB_ACTIVE).order_by(Club.id)
+    ).all()
+
+    out = []
+    for club in clubs:
+        posts = db.scalars(
+            select(Post)
+            .where(Post.club_id == club.id, Post.is_public.is_(True))
+            .order_by(Post.activity_date.desc())
+            .limit(RECENT_POSTS)
+        ).all()
+        out.append({
+            "id": club.id,
+            "name": club.name,
+            "category": club.category,
+            "recruit_status": club.recruit_status,
+            "purpose": (club.purpose or "").strip()[:200],
+            "posts": [
+                {
+                    "date": p.activity_date.isoformat(),
+                    "title": p.title,
+                    "tags": p.tags or [],
+                    "excerpt": " ".join((p.body or "").split())[:EXCERPT_LEN],
+                }
+                for p in posts
+            ],
+        })
+    return out
+
+
+@router.post("/ai/recommend")
+def recommend(
+    body: RecommendIn, user: User = Depends(verified_user), db: Session = Depends(get_db)
+):
+    """설문 결과로 동아리 TOP 3 을 추천한다. **결과는 저장하지 않는다** (api.md §7).
+
+    초안과 같은 규칙으로 사용자 개인 키를 쓴다. 응답의 club_id 는 서버가 다시 검증해
+    목록에 없는 동아리는 버린다 — 지어낸 동아리를 화면에 올리지 않기 위해서다.
+    """
+    answers = (body.answers or "").strip().upper()
+    if not answers or any(ch not in "AB" for ch in answers):
+        raise errors.ApiError(400, "INVALID_INPUT", "설문 응답 형식이 올바르지 않습니다.")
+
+    key = decrypt_ai_key(user.ai_key_enc) if user.ai_key_enc else None
+    if not key:
+        raise errors.ApiError(
+            403, "AI_KEY_NOT_REGISTERED", "내 정보에서 AI API 키를 등록하면 사용할 수 있어요."
+        )
+
+    clubs = _candidates(db)
+    if not clubs:
+        raise errors.ApiError(409, "NO_CLUBS", "추천할 동아리가 아직 없습니다.")
+
+    try:
+        items = ai_recommend.recommend(api_key=key, answers=answers, clubs=clubs)
+    except ai_draft.QuotaExceeded as e:
+        raise errors.ApiError(429, "AI_QUOTA_EXCEEDED", "키의 사용 한도를 초과했습니다.") from e
+    except ai_draft.GatewayError as e:
+        raise errors.ApiError(
+            502, "AI_GATEWAY_ERROR", "AI 응답을 받지 못했습니다. 잠시 후 다시 시도해주세요."
+        ) from e
+
+    return {"items": items, "traits": ai_recommend.answers_to_lines(answers)}
