@@ -5,6 +5,7 @@ import { useAuth } from '../stores/auth'
 const routes = [
   { path: '/', name: 'main', component: () => import('../views/MainView.vue') },
   { path: '/archive', name: 'archive', component: () => import('../views/ArchiveView.vue') },
+  { path: '/feed', name: 'feed', component: () => import('../views/FeedView.vue') },
   { path: '/clubs/:id', name: 'club', component: () => import('../views/ClubDetailView.vue'), props: true },
   { path: '/posts/:id', name: 'post', component: () => import('../views/PostDetailView.vue'), props: true },
 

@@ -6,16 +6,65 @@ from uuid import uuid4
 
 from fastapi import APIRouter, Depends, Query, UploadFile
 from pydantic import BaseModel, Field
-from sqlalchemy import func, select
+from sqlalchemy import Text, cast, func, or_, select
 from sqlalchemy.orm import Session
 
 from .. import errors, serializers
 from ..config import settings
 from ..db import get_db
 from ..deps import club_leader, current_user_optional, verified_user
-from ..models import ClubMember, Like, Post, User
+from ..models import Club, ClubMember, Like, Post, User
 
 router = APIRouter(tags=["posts"])
+
+
+@router.get("/posts")
+def feed(
+    q: str = Query("", max_length=60),
+    offset: int = 0,
+    limit: int = Query(12, le=30),
+    user: User | None = Depends(current_user_optional),
+    db: Session = Depends(get_db),
+):
+    """전체 피드 — 동아리를 가리지 않고 **최신순**으로 준다 (api.md §3).
+
+    동아리 타임라인(`/clubs/{id}/posts`)이 오래된 순인 것과 반대다. 거기는 한 동아리의
+    역사를 처음부터 따라가는 화면이고, 여기는 지금 무슨 일이 있는지 보는 화면이다.
+
+    비공개 글은 소속 동아리 것만 섞인다 (기획서 §6.2). 검색은 제목·본문·동아리명·태그.
+    """
+    base = select(Post).join(Club, Post.club_id == Club.id)
+
+    if user is None:
+        base = base.where(Post.is_public.is_(True))
+    elif not user.is_admin:
+        mine = select(ClubMember.club_id).where(ClubMember.user_id == user.id)
+        base = base.where(or_(Post.is_public.is_(True), Post.club_id.in_(mine)))
+
+    needle = q.strip()
+    if needle:
+        like = f"%{needle}%"
+        base = base.where(
+            or_(
+                Post.title.ilike(like),
+                Post.body.ilike(like),
+                Club.name.ilike(like),
+                # 태그는 JSON 배열이라 통째로 문자열로 보고 찾는다. 카드에 보이는 태그를
+                # 그대로 쳐서 찾을 수 있으면 충분하다 — 정확한 태그 일치는 아니다
+                cast(Post.tags, Text).ilike(like),
+            )
+        )
+
+    total = db.scalar(select(func.count()).select_from(base.subquery())) or 0
+    rows = db.scalars(
+        base.order_by(Post.activity_date.desc(), Post.id.desc()).offset(offset).limit(limit)
+    ).all()
+
+    return {
+        "items": [serializers.post_summary(db, p, user) for p in rows],
+        "total": total,
+        "has_more": offset + len(rows) < total,
+    }
 
 
 @router.get("/posts/highlights")
