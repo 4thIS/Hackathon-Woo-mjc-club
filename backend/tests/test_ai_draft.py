@@ -27,7 +27,7 @@ def client():
 @pytest.fixture
 def leader(client):
     """AI 키가 등록된 동아리장. 로그인 상태로 넘긴다."""
-    sid = f"98{uuid.uuid4().int % 1_000_000:06d}"
+    sid = f"98{uuid.uuid4().int % 100_000_000:08d}"
     name = f"AI테스트동아리{uuid.uuid4().hex[:8]}"
     account = {
         "email": f"{sid}@mjc.ac.kr",

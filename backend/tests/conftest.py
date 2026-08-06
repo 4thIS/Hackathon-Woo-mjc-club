@@ -113,7 +113,7 @@ def db():
 @pytest.fixture
 def make_user(db):
     def _make(*, verified=True, admin=False, academic_status=enums.ACADEMIC_ENROLLED, name="테스트유저"):
-        uid = f"77{_RUN}{next(_uid_seq):03d}"   # 8자리 학번
+        uid = f"77{_RUN}{next(_uid_seq):05d}"   # 학번 10자리 고정
         user = User(
             id=uid,
             email=f"{uid}@mjc.ac.kr",
