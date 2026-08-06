@@ -3,6 +3,8 @@
 from app import enums
 from app.models import Club, ClubApplication, ClubMember
 
+from .conftest import new_club_name
+
 
 def test_apply_club_creates_pending_application(client, make_user, auth_cookie):
     user = make_user()
@@ -74,9 +76,12 @@ def test_admin_lists_applications_requires_admin(client, make_user, auth_cookie)
 def test_approve_application_creates_club_with_applicant_as_leader(client, make_user, auth_cookie, db):
     admin = make_user(admin=True)
     applicant = make_user()
+    # 승인되면 진짜 동아리가 만들어진다. 이름에 표식이 없으면 conftest 의 정리를 빠져나가
+    # 다음 실행에서 clubs_name_key 로 충돌한다.
+    name = new_club_name()
     app_ = ClubApplication(
         applicant_id=applicant.id,
-        name="보드게임연구회",
+        name=name,
         category="취미·교양",
         founded_year=2026,
         purpose="목적",
@@ -91,7 +96,7 @@ def test_approve_application_creates_club_with_applicant_as_leader(client, make_
 
     club = db.get(Club, club_id)
     assert club is not None
-    assert club.name == "보드게임연구회"
+    assert club.name == name
 
     membership = db.get(ClubMember, {"user_id": applicant.id, "club_id": club_id})
     assert membership.role == "동아리장"
