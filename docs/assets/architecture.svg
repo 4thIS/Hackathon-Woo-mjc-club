@@ -1,0 +1,87 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 470" width="900" height="470" role="img" aria-label="시스템 구성도: 브라우저에서 프론트엔드, 백엔드를 거쳐 PostgreSQL과 업로드 저장소로 이어지고, 백엔드가 사용자 개인 키로 명지전문대 AI Gateway를 호출한다">
+  <style>
+    :root, svg {
+      --bg:#FBFAFF; --card:#FFFFFF; --line:#E5E1F6; --chip:#EFECFC;
+      --ink:#453A6E; --dim:#948DB3; --accent:#7C6BC4; --band:#C3B9EC;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root, svg {
+        --bg:#16152A; --card:#211F3B; --line:#322F56; --chip:#2C2950;
+        --ink:#E8E5FA; --dim:#9A94C2; --accent:#A08FF2; --band:#544D8C;
+      }
+    }
+    .bg   { fill: var(--bg); }
+    .box  { fill: var(--card); stroke: var(--line); stroke-width: 1.5; }
+    .hi   { fill: var(--chip); stroke: var(--accent); stroke-width: 1.5; }
+    .t    { fill: var(--ink); font-weight: 700; font-size: 15px; }
+    .s    { fill: var(--dim); font-size: 12px; }
+    .l    { fill: var(--dim); font-size: 11.5px; font-weight: 700; letter-spacing: .04em; }
+    .eb   { fill: var(--dim); font-size: 10.5px; font-weight: 700; letter-spacing: .12em; }
+    .arrow{ stroke: var(--accent); stroke-width: 1.8; fill: none; }
+    .dash { stroke: var(--accent); stroke-width: 1.8; fill: none; stroke-dasharray: 6 5; }
+    text  { font-family: Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI", "Malgun Gothic", sans-serif; }
+  </style>
+
+  <defs>
+    <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="var(--accent)"/>
+    </marker>
+  </defs>
+
+  <rect class="bg" x="0" y="0" width="900" height="470" rx="16"/>
+
+  <!-- 브라우저 -->
+  <rect class="box" x="24" y="172" width="170" height="96" rx="14"/>
+  <text class="eb" x="44" y="200">CLIENT</text>
+  <text class="t"  x="44" y="224">브라우저</text>
+  <text class="s"  x="44" y="246">비로그인도 목록·공개 글 열람</text>
+
+  <!-- 프론트엔드 -->
+  <rect class="box" x="254" y="172" width="170" height="96" rx="14"/>
+  <text class="eb" x="274" y="200">FRONTEND</text>
+  <text class="t"  x="274" y="224">Vue 3 + Vite</text>
+  <text class="s"  x="274" y="246">nginx :8080 / dev :5173</text>
+
+  <!-- 백엔드 -->
+  <rect class="hi" x="484" y="172" width="170" height="96" rx="14"/>
+  <text class="eb" x="504" y="200">BACKEND</text>
+  <text class="t"  x="504" y="224">FastAPI :8000</text>
+  <text class="s"  x="504" y="246">세션 쿠키 · 권한 검사</text>
+
+  <!-- DB -->
+  <rect class="box" x="714" y="44" width="162" height="96" rx="14"/>
+  <text class="eb" x="734" y="72">DATABASE</text>
+  <text class="t"  x="734" y="96">PostgreSQL 16</text>
+  <text class="s"  x="734" y="118">테이블 10개 · create_all</text>
+
+  <!-- uploads -->
+  <rect class="box" x="714" y="300" width="162" height="96" rx="14"/>
+  <text class="eb" x="734" y="328">STORAGE</text>
+  <text class="t"  x="734" y="352">uploads/</text>
+  <text class="s"  x="734" y="374">활동 사진 원본 저장</text>
+
+  <!-- AI Gateway -->
+  <rect class="box" x="424" y="368" width="290" height="82" rx="14"/>
+  <text class="eb" x="444" y="394">EXTERNAL</text>
+  <text class="t"  x="444" y="418">명지전문대 AI Gateway</text>
+  <text class="s"  x="444" y="438">사용자가 직접 발급한 개인 키로 호출</text>
+
+  <!-- 화살표 -->
+  <path class="arrow" d="M194,220 L246,220" marker-end="url(#ah)"/>
+  <text class="l" x="198" y="208">HTTP</text>
+
+  <path class="arrow" d="M424,220 L476,220" marker-end="url(#ah)"/>
+  <text class="l" x="424" y="208">/api</text>
+
+  <path class="arrow" d="M654,200 C688,200 690,140 706,116" marker-end="url(#ah)"/>
+  <path class="arrow" d="M654,246 C688,246 690,300 706,326" marker-end="url(#ah)"/>
+
+  <path class="dash" d="M569,268 L569,360" marker-end="url(#ah)"/>
+  <text class="l" x="330" y="318">개인 키 · 서버가 대신 쥐지 않는다</text>
+
+  <!-- 범례 -->
+  <path class="arrow" d="M24,428 L58,428"/>
+  <text class="s" x="66" y="432">요청 흐름</text>
+  <path class="dash" d="M156,428 L190,428"/>
+  <text class="s" x="198" y="432">사용자 개인 키로 호출</text>
+</svg>

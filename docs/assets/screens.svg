@@ -1,0 +1,97 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 430" width="900" height="430" role="img" aria-label="권한별 화면 구조도: 누구나 볼 수 있는 화면, 로그인 사용자 화면, 동아리장 화면, 관리자 화면으로 나뉜다">
+  <style>
+    :root, svg {
+      --bg:#FBFAFF; --card:#FFFFFF; --line:#E5E1F6; --chip:#EFECFC;
+      --ink:#453A6E; --dim:#948DB3; --accent:#7C6BC4;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root, svg {
+        --bg:#16152A; --card:#211F3B; --line:#322F56; --chip:#2C2950;
+        --ink:#E8E5FA; --dim:#9A94C2; --accent:#A08FF2;
+      }
+    }
+    .bg   { fill: var(--bg); }
+    .col  { fill: var(--card); stroke: var(--line); stroke-width: 1.5; }
+    .row  { fill: var(--chip); }
+    .rowq { fill: none; stroke: var(--line); stroke-width: 1.2; }
+    .bar  { fill: var(--accent); }
+    .hd   { fill: var(--ink); font-weight: 800; font-size: 14px; letter-spacing: -.02em; }
+    .eb   { fill: var(--dim); font-size: 10px; font-weight: 700; letter-spacing: .12em; }
+    .it   { fill: var(--ink); font-size: 12.5px; font-weight: 700; }
+    .itq  { fill: var(--dim); font-size: 12.5px; }
+    .lg   { fill: var(--dim); font-size: 11.5px; }
+    text  { font-family: Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI", "Malgun Gothic", sans-serif; }
+  </style>
+
+  <rect class="bg" x="0" y="0" width="900" height="430" rx="16"/>
+
+  <!-- ── 누구나 ── -->
+  <rect class="col" x="24" y="28" width="192" height="344" rx="16"/>
+  <text class="eb" x="44" y="56">PUBLIC</text>
+  <text class="hd" x="44" y="78">누구나</text>
+
+  <rect class="row" x="40" y="96"  width="160" height="28" rx="8"/><rect class="bar" x="40" y="96"  width="3" height="28" rx="2"/>
+  <text class="it"  x="54" y="115">메인 · 곡선 캐러셀</text>
+  <rect class="row" x="40" y="132" width="160" height="28" rx="8"/><rect class="bar" x="40" y="132" width="3" height="28" rx="2"/>
+  <text class="it"  x="54" y="151">아카이브 · 둘러보기</text>
+  <rect class="row" x="40" y="168" width="160" height="28" rx="8"/><rect class="bar" x="40" y="168" width="3" height="28" rx="2"/>
+  <text class="it"  x="54" y="187">동아리 상세</text>
+  <rect class="row" x="40" y="204" width="160" height="28" rx="8"/><rect class="bar" x="40" y="204" width="3" height="28" rx="2"/>
+  <text class="it"  x="54" y="223">활동 글 상세</text>
+  <rect class="rowq" x="40" y="240" width="160" height="28" rx="8"/>
+  <text class="itq" x="54" y="259">로그인 · 회원가입</text>
+  <rect class="rowq" x="40" y="276" width="160" height="28" rx="8"/>
+  <text class="itq" x="54" y="295">이메일 인증 안내</text>
+
+  <!-- ── 로그인 사용자 ── -->
+  <rect class="col" x="240" y="28" width="192" height="344" rx="16"/>
+  <text class="eb" x="260" y="56">MEMBER</text>
+  <text class="hd" x="260" y="78">로그인 사용자</text>
+
+  <rect class="row" x="256" y="96"  width="160" height="28" rx="8"/><rect class="bar" x="256" y="96" width="3" height="28" rx="2"/>
+  <text class="it"  x="270" y="115">가입 신청 모달</text>
+  <rect class="rowq" x="256" y="132" width="160" height="28" rx="8"/>
+  <text class="itq" x="270" y="151">내 정보 · AI 키 등록</text>
+  <rect class="rowq" x="256" y="168" width="160" height="28" rx="8"/>
+  <text class="itq" x="270" y="187">내 신청 현황</text>
+  <rect class="rowq" x="256" y="204" width="160" height="28" rx="8"/>
+  <text class="itq" x="270" y="223">동아리 개설 신청</text>
+
+  <!-- ── 동아리장 ── -->
+  <rect class="col" x="456" y="28" width="192" height="344" rx="16"/>
+  <text class="eb" x="476" y="56">LEADER</text>
+  <text class="hd" x="476" y="78">동아리장</text>
+
+  <rect class="row" x="472" y="96"  width="160" height="28" rx="8"/><rect class="bar" x="472" y="96" width="3" height="28" rx="2"/>
+  <text class="it"  x="486" y="115">활동 글 작성 · AI</text>
+  <rect class="rowq" x="472" y="132" width="160" height="28" rx="8"/>
+  <text class="itq" x="486" y="151">신청자 목록 · 승인</text>
+  <rect class="rowq" x="472" y="168" width="160" height="28" rx="8"/>
+  <text class="itq" x="486" y="187">부원 관리 · 기수</text>
+  <rect class="rowq" x="472" y="204" width="160" height="28" rx="8"/>
+  <text class="itq" x="486" y="223">가입폼 편집</text>
+  <rect class="rowq" x="472" y="240" width="160" height="28" rx="8"/>
+  <text class="itq" x="486" y="259">탈퇴 요청 처리</text>
+  <rect class="rowq" x="472" y="276" width="160" height="28" rx="8"/>
+  <text class="itq" x="486" y="295">동아리 정보 수정</text>
+  <rect class="rowq" x="472" y="312" width="160" height="28" rx="8"/>
+  <text class="itq" x="486" y="331">동아리장 위임</text>
+
+  <!-- ── 관리자 ── -->
+  <rect class="col" x="672" y="28" width="192" height="344" rx="16"/>
+  <text class="eb" x="692" y="56">ADMIN</text>
+  <text class="hd" x="692" y="78">관리자</text>
+
+  <rect class="rowq" x="688" y="96"  width="160" height="28" rx="8"/>
+  <text class="itq" x="702" y="115">개설 신청 승인·거절</text>
+  <rect class="rowq" x="688" y="132" width="160" height="28" rx="8"/>
+  <text class="itq" x="702" y="151">동아리 보관 전환</text>
+  <rect class="rowq" x="688" y="168" width="160" height="28" rx="8"/>
+  <text class="itq" x="702" y="187">동아리장 강제 교체</text>
+
+  <!-- 범례 -->
+  <rect class="row" x="24" y="392" width="26" height="18" rx="6"/><rect class="bar" x="24" y="392" width="3" height="18" rx="2"/>
+  <text class="lg" x="58" y="406">화면 완성</text>
+  <rect class="rowq" x="152" y="392" width="26" height="18" rx="6"/>
+  <text class="lg" x="186" y="406">API 완료 · 화면 작업 중</text>
+</svg>
