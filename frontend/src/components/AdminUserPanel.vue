@@ -160,7 +160,7 @@ const leaderOf = (u) => u.clubs.filter((c) => c.role === '동아리장')
         <div class="fld">
           <label for="au-email">이메일</label>
           <input id="au-email" v-model="form.email">
-          <p class="hint">학교 도메인만 쓸 수 있고, 학번과 일치해야 합니다.</p>
+          <p class="hint">학교 도메인(@mjc.ac.kr · @on.mjc.ac.kr)만 쓸 수 있습니다. 학번과 달라도 됩니다.</p>
         </div>
 
         <div class="fld">

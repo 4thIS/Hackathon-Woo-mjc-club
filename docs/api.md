@@ -120,7 +120,7 @@ gender           남 | 여
 {
   "email": "26011234@mjc.ac.kr",   // @mjc.ac.kr 또는 @on.mjc.ac.kr 만 허용
   "password": "……",                 // 8자 이상
-  "student_id": "2022261026",      // 숫자 10자리 고정. 이메일 로컬파트와 일치해야 한다
+  "student_id": "2022261026",      // 숫자 10자리 고정. 이메일과 별개로 받는다 (일치 불필요)
   "name": "박찬우",
   "dept": "컴퓨터공학과",
   "birth": "2006-03-11",
@@ -135,7 +135,7 @@ gender           남 | 여
 
 | 에러 | code |
 |---|---|
-| 400 | `INVALID_EMAIL_DOMAIN` · `INVALID_STUDENT_ID`(숫자 10자리 아님) · `EMAIL_ID_MISMATCH` · `WEAK_PASSWORD` |
+| 400 | `INVALID_EMAIL_DOMAIN` · `INVALID_STUDENT_ID`(숫자 10자리 아님) · `WEAK_PASSWORD` |
 | 409 | `DUPLICATE_STUDENT_ID` (도메인이 달라도 학번이 같으면 막는다 · 기획서 §4.1) · `DUPLICATE_EMAIL` |
 
 ### `POST /api/auth/login` — `공개`
@@ -611,7 +611,7 @@ gender           남 | 여
 
 | 에러 | code | 설명 |
 |---|---|---|
-| 400 | `INVALID_EMAIL_DOMAIN` · `EMAIL_ID_MISMATCH` | 가입과 같은 규칙 |
+| 400 | `INVALID_EMAIL_DOMAIN` | 가입과 같은 규칙 (로컬파트는 학번과 달라도 된다) |
 | 400 | `INVALID_INPUT` | 학적·성별 값이 열거값이 아님 |
 | 409 | `DUPLICATE_EMAIL` | 다른 사람이 쓰는 이메일 |
 | 409 | `LEADER_CANNOT_GRADUATE` | 동아리장인 동아리가 있으면 졸업 불가. 관리자도 같다 — 먼저 위임하거나 강제 교체한다 |

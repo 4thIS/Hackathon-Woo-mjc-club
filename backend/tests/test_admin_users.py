@@ -66,9 +66,11 @@ def test_email_rules_match_signup(client, make_user, auth_cookie):
                               json={"email": f"{user.id}@gmail.com"}, cookies=auth_cookie(admin))
     assert bad_domain.json()["detail"]["code"] == "INVALID_EMAIL_DOMAIN"
 
-    mismatch = client.patch(f"/api/admin/users/{user.id}",
-                            json={"email": "12345678@mjc.ac.kr"}, cookies=auth_cookie(admin))
-    assert mismatch.json()["detail"]["code"] == "EMAIL_ID_MISMATCH"
+    # 학번과 다른 로컬파트도 허용한다 (가입과 같은 규칙)
+    free = client.patch(f"/api/admin/users/{user.id}",
+                        json={"email": "hongkildong@mjc.ac.kr"}, cookies=auth_cookie(admin))
+    assert free.status_code == 200
+    assert free.json()["email"] == "hongkildong@mjc.ac.kr"
 
     ok = client.patch(f"/api/admin/users/{user.id}",
                       json={"email": f"{user.id}@on.mjc.ac.kr"}, cookies=auth_cookie(admin))

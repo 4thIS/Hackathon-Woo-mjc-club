@@ -287,13 +287,12 @@ def update_user(
 
     if payload.email is not None:
         email = payload.email.strip().lower()
-        local, _, domain = email.partition("@")
+        _, _, domain = email.partition("@")
         if domain not in ALLOWED_DOMAINS:
             raise errors.ApiError(
                 400, "INVALID_EMAIL_DOMAIN", "@mjc.ac.kr 또는 @on.mjc.ac.kr 주소만 쓸 수 있습니다."
             )
-        if local != user.id:
-            raise errors.ApiError(400, "EMAIL_ID_MISMATCH", "이메일 주소와 학번이 일치하지 않습니다.")
+        # 학번과 로컬파트 일치는 요구하지 않는다 (가입과 같은 규칙)
         clash = db.scalar(select(User).where(User.email == email, User.id != user.id))
         if clash is not None:
             raise errors.ApiError(409, "DUPLICATE_EMAIL", "이미 쓰이는 이메일입니다.")
