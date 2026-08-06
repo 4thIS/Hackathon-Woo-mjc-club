@@ -175,7 +175,7 @@ async function withdraw() {
       · {{ me.email }}
     </p>
 
-    <!-- 미인증 안내 (기획서 §4.2) -->
+    <!-- 미인증 안내 -->
     <p v-if="!me.email_verified" class="warn banner">
       <template v-if="resent">인증 메일을 다시 보냈습니다. 받은편지함을 확인해주세요.</template>
       <template v-else>
@@ -246,7 +246,7 @@ async function withdraw() {
         </form>
       </section>
 
-      <!-- ── AI 키 (기획서 §4.5) ── -->
+      <!-- ── AI 키 ── -->
       <section class="card sec wide">
         <h2 class="section-title">AI API 키</h2>
         <p class="hint">
@@ -311,7 +311,7 @@ async function withdraw() {
         </div>
       </section>
 
-      <!-- ── 신청 현황 (기획서 §4.4) ── -->
+      <!-- ── 신청 현황 ── -->
       <section class="card sec wide">
         <h2 class="section-title">내 신청 현황</h2>
         <div class="body">
@@ -350,7 +350,7 @@ async function withdraw() {
                 <li v-for="r in requests.leave" :key="r.id">
                   <span class="nm">{{ r.club_name }}</span>
                   <span class="chip">{{ r.status }}</span>
-                  <!-- 동아리장이 응답하지 않아도 7일 뒤 자동 처리된다 (기획서 §5.4) -->
+                  <!-- 동아리장이 응답하지 않아도 7일 뒤 자동 처리된다 -->
                   <span v-if="r.status === '심사중'" class="meta">
                     {{ dday(r.auto_approve_at) }} 자동 승인
                   </span>
@@ -381,7 +381,7 @@ async function withdraw() {
       </section>
     </div>
 
-    <!-- 탈퇴 확인 모달 (디자인 기획 §6-2) -->
+    <!-- 탈퇴 확인 모달 -->
     <dialog ref="wdDlg" class="narrow" @click.self="wdDlg.close()">
       <div class="sheet-hd">
         <h2>정말 탈퇴하시겠어요?</h2>

@@ -15,6 +15,7 @@ const routes = [
   { path: '/signup', name: 'signup',
     redirect: (to) => ({ path: '/', query: { ...to.query, auth: 'signup' } }) },
   { path: '/verify', name: 'verify', component: () => import('../views/VerifyView.vue') },
+  { path: '/terms', name: 'terms', component: () => import('../views/TermsView.vue') },
 
   { path: '/me', name: 'me', component: () => import('../views/MyPageView.vue'), meta: { auth: true } },
 
@@ -34,7 +35,13 @@ const routes = [
 const router = createRouter({
   history: createWebHistory(),
   routes,
-  scrollBehavior: (to, from, saved) => saved ?? { top: 0 },
+  /* 해시가 가리키는 요소가 있으면 그 자리로. 약관 페이지처럼 해시를 탭 선택에만
+     쓰는 화면도 있어서, 요소가 없으면 그냥 맨 위로 둔다 */
+  scrollBehavior: (to, from, saved) => {
+    if (saved) return saved
+    if (to.hash && document.querySelector(to.hash)) return { el: to.hash, top: 84 }
+    return { top: 0 }
+  },
 })
 
 router.beforeEach(async (to) => {

@@ -194,7 +194,7 @@ watch(() => props.id, load)
     </div>
     <div v-else class="shot fallback" aria-hidden="true">{{ emoji }}</div>
 
-    <!-- 본문은 평문이다 (api.md §9-3). 줄바꿈만 살린다 -->
+    <!-- 본문은 평문이다. 줄바꿈만 살린다 -->
     <div class="body">{{ post.body }}</div>
 
     <div v-if="post.tags?.length" class="tags">
