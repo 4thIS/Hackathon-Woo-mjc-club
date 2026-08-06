@@ -93,6 +93,25 @@ npm run dev                             # :5173 (API는 :8000 프록시)
 
 스키마를 바꿨으면 `docker compose down -v` 후 재생성 + `uv run python seed.py --reset`. 마이그레이션 도구는 쓰지 않는다(해커톤 한정).
 
+### 인증 메일 발송 (선택)
+
+`SMTP_*` 를 비워 두면 메일을 보내지 않고 **인증 링크를 서버 콘솔에 출력한다.** 개발·시연에 지장이 없다.
+
+실제로 메일을 보내려면 루트 `.env` 에 SMTP 정보를 채운다. Gmail 기준:
+
+1. Google 계정 → 보안 → **2단계 인증**을 켠다
+2. **앱 비밀번호**를 발급받는다 (16자리)
+3. `.env` 에 입력 — `SMTP_HOST=smtp.gmail.com` · `SMTP_PORT=587` · `SMTP_USER=본인계정@gmail.com` · `SMTP_PASSWORD=앱비밀번호`
+4. **`SMTP_FROM` 은 비워 둔다.** Gmail 은 인증한 계정과 다른 발신자를 허용하지 않아서, 비어 있으면 `SMTP_USER` 를 발신 주소로 쓴다
+
+회원가입까지 가지 않고 설정만 확인할 수 있다:
+
+```bash
+cd backend && uv run python check_mail.py --to 본인학번@mjc.ac.kr
+```
+
+받는 주소는 `@mjc.ac.kr` · `@on.mjc.ac.kr` 만 가입할 수 있으므로(기획서 §4.1) **수신함은 학교 계정**이어야 한다.
+
 ### 검사
 
 ```bash

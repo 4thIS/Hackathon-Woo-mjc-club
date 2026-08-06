@@ -28,13 +28,19 @@ services:
     environment:
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-mjc}:${POSTGRES_PASSWORD:-mjc}@db:5432/${POSTGRES_DB:-mjcclub}
       SECRET_KEY: ${SECRET_KEY:-dev-only-change-me}
-      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:8080}
+      # ★ .env 의 FRONTEND_URL 을 그대로 받지 않는다. 그 값은 개발 서버(:5173)용이라
+      #   도커에서 쓰면 인증 메일 링크가 뜨지 않는 주소를 가리키게 된다.
+      #   다른 주소로 띄우려면 DOCKER_FRONTEND_URL 로 덮어쓴다.
+      FRONTEND_URL: ${DOCKER_FRONTEND_URL:-http://localhost:8080}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:8080,http://localhost:5173}
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-}
       SMTP_HOST: ${SMTP_HOST:-}
       SMTP_PORT: ${SMTP_PORT:-587}
       SMTP_USER: ${SMTP_USER:-}
       SMTP_PASSWORD: ${SMTP_PASSWORD:-}
-      SMTP_FROM: ${SMTP_FROM:-no-reply@mjc.ac.kr}
+      # 비워 두면 SMTP_USER 를 발신자로 쓴다 (Gmail 은 다른 From 을 허용하지 않는다)
+      SMTP_FROM: ${SMTP_FROM:-}
+      SMTP_SENDER_NAME: ${SMTP_SENDER_NAME:-MJC Club Archive}
       AI_BASE_URL: ${AI_BASE_URL:-https://factchat-cloud.mindlogic.ai/v1/gateway}
       AI_MODEL: ${AI_MODEL:-claude-sonnet-5}
       DEMO_FALLBACK: ${DEMO_FALLBACK:-0}

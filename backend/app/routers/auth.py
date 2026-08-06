@@ -31,6 +31,7 @@ router = APIRouter(tags=["auth"])
 
 ALLOWED_DOMAINS = ("mjc.ac.kr", "on.mjc.ac.kr")
 TOKEN_TTL = timedelta(hours=24)  # api.md 에 미정 — 24시간. 만료돼도 재발송으로 복구된다
+RESEND_COOLDOWN = timedelta(seconds=60)  # 실제 발송이 켜진 뒤의 남용 방지
 LEAVE_AUTO_DAYS = 7  # 기획서 §5.4
 
 
@@ -99,6 +100,28 @@ def me_payload(user: User) -> dict:
 def iso(dt: datetime) -> str:
     """DB 드라이버가 naive 로 돌려주는 경우가 있어 UTC 로 맞춘다."""
     return (dt if dt.tzinfo else dt.replace(tzinfo=UTC)).isoformat()
+
+
+def _in_cooldown(db: Session, user: User) -> bool:
+    """마지막 발급 후 RESEND_COOLDOWN 이 지나지 않았는가.
+
+    실제 메일이 나가기 시작하면 재발송은 무제한 발송기가 된다. Gmail 일일 한도를
+    소진하면 그 뒤로는 아무에게도 메일이 가지 않는다.
+
+    발급 시각 컬럼을 새로 만들지 않고 `expires_at - TOKEN_TTL` 로 역산한다 —
+    스키마를 건드리면 DB 를 재생성해야 하기 때문이다 (backend/CLAUDE.md).
+    """
+    latest = db.scalar(
+        select(EmailToken)
+        .where(EmailToken.user_id == user.id)
+        .order_by(EmailToken.expires_at.desc())
+    )
+    if latest is None:
+        return False
+    expires = latest.expires_at
+    if expires.tzinfo is None:
+        expires = expires.replace(tzinfo=UTC)
+    return datetime.now(UTC) - (expires - TOKEN_TTL) < RESEND_COOLDOWN
 
 
 def issue_verification(db: Session, user: User) -> bool:
@@ -213,9 +236,12 @@ def verify(token: str, db: Session = Depends(get_db)):
 
 @router.post("/auth/verify/resend", status_code=204)
 def resend(body: ResendIn, db: Session = Depends(get_db)):
-    """존재 여부를 노출하지 않기 위해 없는 이메일이어도 204 다 (api.md §2)."""
+    """존재 여부를 노출하지 않기 위해 없는 이메일이어도 204 다 (api.md §2).
+
+    쿨다운에 걸려도 204 다. 여기서 429 를 주면 "이 이메일은 존재한다"를 알려주게 된다.
+    """
     user = db.scalar(select(User).where(User.email == body.email.strip().lower()))
-    if user is not None and not user.email_verified:
+    if user is not None and not user.email_verified and not _in_cooldown(db, user):
         issue_verification(db, user)
     return Response(status_code=204)
 
