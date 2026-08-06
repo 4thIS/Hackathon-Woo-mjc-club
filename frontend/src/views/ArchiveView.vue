@@ -95,7 +95,7 @@ async function clearQuery() {
 <template>
   <div class="wrap">
     <aside class="rail">
-      <h1>Archive</h1>
+      <h1 class="latin">Archive</h1>
       <p class="sub">{{ loading ? '불러오는 중…' : sub }}</p>
 
       <div class="search">
@@ -192,11 +192,13 @@ async function clearQuery() {
   display: grid;
   grid-template-columns: minmax(260px, 30%) 1fr;
   gap: clamp(28px, 5vw, 72px);
-  padding: clamp(36px, 6vh, 70px) clamp(20px, 4vw, 56px) 110px;
+  padding: clamp(36px, 6vh, 70px) clamp(20px, 4vw, 56px) 70px;
   align-items: start;
 }
 
 /* ── 좌측 레일 ── */
+/* 레일은 내용을 다 펼친 채로 화면을 따라온다 — 안쪽 스크롤은 두지 않는다
+   (스크롤이 생기면 제목이 잘려 보인다) */
 .rail {
   position: sticky;
   top: calc(var(--header-h) + 28px);
