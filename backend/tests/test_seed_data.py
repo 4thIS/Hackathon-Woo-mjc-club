@@ -5,6 +5,9 @@
 신입생이 신청하게 된다.
 """
 
+import json
+from pathlib import Path
+
 from app import enums
 from seed import CLUBS, DEMO_LED, POSTS
 
@@ -39,4 +42,20 @@ def test_enough_clubs_have_public_posts_for_the_carousel():
 
 
 def test_purpose_carries_main_activities():
-    assert any("주요사업:" in c["purpose"] for c in CLUBS)
+    """main_activities 가 있는 항목은 전부 purpose 에 이어붙어야 한다. any() 로는
+    25개 중 1개만 이어붙어도 통과해버려서 clubs.json 을 직접 대조한다."""
+    raw = json.loads((Path(__file__).parent.parent / "data" / "clubs.json").read_text(encoding="utf-8"))
+    by_name = {c["name"]: c for c in CLUBS}
+    for c in raw["clubs"]:
+        if c.get("main_activities"):
+            assert "주요사업:" in by_name[c["name"]]["purpose"], c["name"]
+
+
+def test_demo_led_names_exist_in_crawled_data():
+    """학교가 동아리를 개명하고 재크롤링하면 seed 가 KeyError 로 죽는다. 여기서 먼저 잡는다."""
+    assert set(DEMO_LED) <= {c["name"] for c in CLUBS}
+
+
+def test_post_club_names_exist_in_crawled_data():
+    """POSTS 가 참조하는 동아리 이름도 재크롤링에 취약하므로 같은 이유로 검증한다."""
+    assert {p[0] for p in POSTS} <= {c["name"] for c in CLUBS}

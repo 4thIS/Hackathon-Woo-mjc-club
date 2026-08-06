@@ -54,7 +54,7 @@ const founded = computed(() => {
 
 const genText = computed(() => {
   const c = club.value
-  if (!c?.current_gen) return c?.recruit_status ?? '—'
+  if (!c?.current_gen) return '—'
   if (c.recruit_status === '상시모집') return `${c.current_gen}기 · 상시 모집`
   if (recruitOpen.value) return `${c.current_gen}기 모집 중`
   return `${c.current_gen}기 · 현재 모집 마감`

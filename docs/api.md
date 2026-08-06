@@ -385,8 +385,10 @@ gender           남 | 여
 메인 브랜드 섹션 지표 4개.
 
 ```json
-{ "clubs": 42, "recruiting": 17, "posts": 268, "categories": 5 }
+{ "clubs": 42, "recruiting": 17, "posts": 268, "categories": 4 }
 ```
+
+`categories`는 **활동중 동아리가 실제로 쓰는 서로 다른 분야 수**다. 열거값 개수가 아니다.
 
 ---
 
