@@ -12,7 +12,7 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from .. import enums, errors
+from .. import enums, errors, serializers
 from ..config import settings
 from ..db import get_db
 from ..deps import current_user, verified_user
@@ -273,14 +273,13 @@ def update_me(body: UpdateMeIn, user: User = Depends(current_user), db: Session 
 
 @router.get("/me/clubs")
 def my_clubs(user: User = Depends(current_user), db: Session = Depends(get_db)):
-    from .clubs import club_summary  # 요약 형태는 T2 가 소유한다. 여기서 다시 만들지 않는다
-
     rows = db.scalars(
         select(ClubMember).where(ClubMember.user_id == user.id).order_by(ClubMember.club_id)
     ).all()
     return [
         {
-            "club": club_summary(db, m.club),
+            # 요약 형태는 serializers 가 소유한다. 여기서 다시 조립하지 않는다 (api.md §0.4)
+            "club": serializers.club_summary(db, m.club),
             "role": m.role,
             "membership": m.membership,
             "gen": m.gen,
