@@ -1,20 +1,42 @@
 """T5 — 활동 글 (담당 cw). 명세: docs/api.md §3(읽기) · §6(쓰기)"""
 
 from fastapi import APIRouter, Depends, Query, UploadFile
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from .. import errors
+from .. import errors, serializers
 from ..db import get_db
 from ..deps import club_leader, current_user_optional, verified_user
-from ..models import ClubMember, User
+from ..models import ClubMember, Post, User
 
 router = APIRouter(tags=["posts"])
 
 
 @router.get("/posts/highlights")
-def highlights(limit: int = Query(12, le=20), db: Session = Depends(get_db)):
-    # 공개 글 최신순, 동아리당 최대 1건 (api.md §9-4)
-    raise errors.todo("메인 캐러셀 하이라이트")
+def highlights(
+    limit: int = Query(12, le=20),
+    user: User | None = Depends(current_user_optional),
+    db: Session = Depends(get_db),
+):
+    """메인 곡선 캐러셀. 공개 글 최신순, **동아리당 최대 1건** (api.md §9-4).
+
+    한 동아리가 캐러셀을 독점하면 "여러 동아리가 살아 있다"는 메시지가 죽는다.
+    """
+    rows = db.scalars(
+        select(Post).where(Post.is_public.is_(True)).order_by(Post.activity_date.desc(), Post.id.desc())
+    ).all()
+
+    picked: list[Post] = []
+    seen: set[int] = set()
+    for p in rows:
+        if p.club_id in seen:
+            continue
+        seen.add(p.club_id)
+        picked.append(p)
+        if len(picked) >= limit:
+            break
+
+    return [serializers.post_summary(db, p, user) for p in picked]
 
 
 @router.get("/posts/{post_id}")
@@ -23,8 +45,15 @@ def post_detail(
     user: User | None = Depends(current_user_optional),
     db: Session = Depends(get_db),
 ):
-    # 비공개 글을 권한 없이 요청하면 403이 아니라 404 (api.md §9-5)
-    raise errors.todo("활동 글 상세")
+    post = db.get(Post, post_id)
+    if post is None:
+        raise errors.not_found("글을 찾을 수 없습니다.")
+
+    # 비공개 글을 권한 없이 요청하면 403이 아니라 404 — 존재 자체를 숨긴다 (api.md §9-5)
+    if not post.is_public and not serializers.can_see_private(db, post.club_id, user):
+        raise errors.not_found("글을 찾을 수 없습니다.")
+
+    return serializers.post_detail(db, post, user, serializers.can_edit_post(db, post, user))
 
 
 @router.post("/uploads", status_code=201)
