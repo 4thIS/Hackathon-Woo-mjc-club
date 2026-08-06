@@ -4,6 +4,7 @@
 import { onMounted, ref, watch } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import AuthDialog from './AuthDialog.vue'
+import logoMark from '../assets/logo-mark.png'
 import { useAuth } from '../stores/auth'
 
 const auth = useAuth()
@@ -46,7 +47,9 @@ function toggle() {
 <template>
   <header class="site-header">
     <div class="container inner">
-      <RouterLink to="/" class="brand brand-title">MJC Club Archive</RouterLink>
+      <RouterLink to="/" class="brand" aria-label="MJC Club Archive 홈">
+        <img :src="logoMark" alt="MJC Club Archive" width="128" height="61">
+      </RouterLink>
 
       <nav>
         <RouterLink to="/">홈</RouterLink>
@@ -81,7 +84,9 @@ function toggle() {
   border-bottom: 1px solid var(--line);
 }
 .inner { display: flex; align-items: center; gap: 24px; height: 100%; }
-.brand { font-size: 17px; letter-spacing: -.02em; }
+/* 배경이 투명한 로고다. 파란 수채화라 라이트·다크 양쪽에서 그대로 읽힌다 */
+.brand { display: inline-flex; align-items: center; line-height: 0; }
+.brand img { height: 30px; width: auto; display: block; }
 nav { display: flex; gap: 18px; font-size: 14px; margin-right: auto; }
 nav a.router-link-exact-active { font-weight: 700; }
 .right { display: flex; align-items: center; gap: 8px; }
