@@ -218,7 +218,8 @@ watch(() => props.id, load)
     <p v-if="likeError" class="warn note">{{ likeError }}</p>
     <p v-else-if="likeBlocked" class="note sub">
       {{ likeNotice }}
-      <RouterLink v-if="!auth.isLoggedIn" class="lk" :to="{ name: 'login', query: { next: route.fullPath } }">
+      <RouterLink v-if="!auth.isLoggedIn" class="lk"
+                  :to="{ path: route.path, query: { ...route.query, auth: 'login' } }">
         로그인하기
       </RouterLink>
       <RouterLink v-else class="lk" to="/me">내 정보로 가기</RouterLink>
