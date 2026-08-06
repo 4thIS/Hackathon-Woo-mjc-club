@@ -59,8 +59,17 @@ function qs(params) {
   return s ? `?${s}` : ''
 }
 
+/* 학과 목록은 앱을 켜는 동안 바뀌지 않는다 — 한 번만 받아 쓴다 */
+let deptsPromise = null
+
 export const api = {
   health: () => get('/health'),
+
+  // --- 참조 데이터 (§1) ---
+  depts: () => {
+    deptsPromise ??= get('/depts').then((r) => r?.items ?? [])
+    return deptsPromise
+  },
 
   // --- 인증·계정 (docs/api.md §2) ---
   auth: {

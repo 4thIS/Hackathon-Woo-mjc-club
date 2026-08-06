@@ -15,6 +15,10 @@ const clubs = ref([])
 const requests = ref({ join: [], create: [], leave: [] })
 const loading = ref(true)
 
+/* 학과는 학교 홈페이지에서 긁어 둔 목록에서 고른다 (자유 입력 아님) */
+const deptList = ref([])
+api.depts().then((items) => { deptList.value = items })
+
 // grade 는 서버에 저장된 값이고 null 일 수 있다 — 그때는 select 를 빈 값으로 둔다
 const profile = reactive({ dept: '', grade: '', academic_status: '재학' })
 const profileMsg = ref('')
@@ -193,7 +197,9 @@ async function withdraw() {
         <form class="body" @submit.prevent="saveProfile">
           <div class="fld">
             <label for="dept">학과</label>
-            <input id="dept" v-model="profile.dept">
+            <select id="dept" v-model="profile.dept">
+              <option v-for="d in deptList" :key="d" :value="d">{{ d }}</option>
+            </select>
           </div>
           <div class="fld">
             <label for="grade">학년</label>

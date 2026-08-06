@@ -9,7 +9,7 @@ from fastapi.staticfiles import StaticFiles
 from . import errors
 from .config import settings
 from .db import create_all
-from .routers import admin, ai, auth, clubs, members, posts
+from .routers import admin, ai, auth, clubs, members, meta, posts
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
 
@@ -44,8 +44,9 @@ def health() -> dict:
     return {"status": "ok"}
 
 
-for r in (auth.router, clubs.router, members.router, admin.router, posts.router, ai.router):
+for r in (auth.router, clubs.router, members.router, admin.router, posts.router,
+          ai.router, meta.router):
     app.include_router(r, prefix="/api")
 
-# 업로드된 사진은 로컬 저장 원본 그대로 서빙한다 (구현계획 §7 — 리사이징·CDN 없음)
+# 업로드된 사진은 로컬 저장 원본 그대로 서빙한다 (리사이징·CDN 없음)
 app.mount("/uploads", StaticFiles(directory=settings.upload_dir, check_dir=False), name="uploads")

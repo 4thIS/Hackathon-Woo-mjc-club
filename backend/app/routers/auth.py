@@ -12,7 +12,7 @@ from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from .. import enums, errors, serializers
+from .. import depts, enums, errors, serializers
 from ..config import settings
 from ..db import get_db
 from ..deps import current_user, verified_user
@@ -183,6 +183,8 @@ def signup(body: SignupIn, db: Session = Depends(get_db)):
         raise errors.ApiError(400, "WEAK_PASSWORD", "비밀번호는 8자 이상이어야 합니다.")
     if body.gender not in enums.GENDERS:
         raise errors.ApiError(400, "INVALID_INPUT", "성별 값이 올바르지 않습니다.")
+    if not depts.is_valid(body.dept.strip()):
+        raise errors.ApiError(400, "INVALID_DEPT", "학과는 목록에서 골라주세요.")
     if body.grade is not None and body.grade not in GRADES:
         raise errors.ApiError(400, "INVALID_INPUT", "학년은 1~4 중에서 고릅니다.")
 
@@ -287,6 +289,8 @@ def update_me(body: UpdateMeIn, user: User = Depends(current_user), db: Session 
         dept = body.dept.strip()
         if not dept:
             raise errors.ApiError(400, "INVALID_INPUT", "학과를 입력해주세요.")
+        if not depts.is_valid(dept):
+            raise errors.ApiError(400, "INVALID_DEPT", "학과는 목록에서 골라주세요.")
         user.dept = dept
 
     # 학년은 본인만 안다. `grade` 를 **보냈는지**로 판단한다 —

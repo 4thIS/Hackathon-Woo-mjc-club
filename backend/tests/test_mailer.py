@@ -94,7 +94,7 @@ def unverified_user():
         email=f"{uid}@mjc.ac.kr",
         pw_hash="x",
         name="미인증",
-        dept="테스트학과",
+        dept="컴퓨터공학과",
         birth=datetime(2006, 1, 1).date(),
         gender="남",
         academic_status=enums.ACADEMIC_ENROLLED,

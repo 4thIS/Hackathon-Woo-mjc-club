@@ -101,13 +101,25 @@ gender           남 | 여
 
 ---
 
-## 1. 헬스체크
+## 1. 헬스체크 · 참조 데이터
 
 ### `GET /api/health` — `공개`
 
 ```json
 { "status": "ok" }
 ```
+
+### `GET /api/depts` — `공개`
+
+학과 목록. 가입·내 정보·관리자 유저 수정의 학과 `<select>` 가 이 목록을 쓴다.
+
+```json
+{ "items": ["AI게임소프트웨어학과", "컴퓨터공학과", "…"] }
+```
+
+원본은 `backend/data/depts.json` 이다. `backend/crawl_depts.py` 를 **손으로 돌려** 학교 홈페이지에서 갱신하고 커밋한다 — 앱은 학교 서버를 호출하지 않는다(동아리 목록과 같은 규칙).
+
+`dept` 는 이 목록 안의 값이어야 한다. 벗어나면 **400 `INVALID_DEPT`** (가입 · `PATCH /me` · `PATCH /admin/users/{id}` 공통). 목록 파일을 읽지 못하면 검증을 건너뛴다 — 목록이 비었다고 아무도 가입 못 하는 편이 더 나쁘다.
 
 ---
 
@@ -135,7 +147,7 @@ gender           남 | 여
 
 | 에러 | code |
 |---|---|
-| 400 | `INVALID_EMAIL_DOMAIN` · `INVALID_STUDENT_ID`(숫자 10자리 아님) · `WEAK_PASSWORD` |
+| 400 | `INVALID_EMAIL_DOMAIN` · `INVALID_STUDENT_ID`(숫자 10자리 아님) · `WEAK_PASSWORD` · `INVALID_DEPT`(§1 목록 밖) |
 | 409 | `DUPLICATE_STUDENT_ID` (도메인이 달라도 학번이 같으면 막는다 · 기획서 §4.1) · `DUPLICATE_EMAIL` |
 
 ### `POST /api/auth/login` — `공개`

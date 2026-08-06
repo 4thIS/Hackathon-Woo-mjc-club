@@ -30,7 +30,7 @@ def account():
         "password": "test1234",
         "student_id": sid,
         "name": "테스터",
-        "dept": "컴퓨터정보과",
+        "dept": "컴퓨터공학과",
         "birth": "2006-03-11",
         "gender": "남",
     }
@@ -160,9 +160,9 @@ def test_update_me_allows_only_dept_status_password(client, account):
     client.post("/api/auth/signup", json=account)
     client.post("/api/auth/login", json={"email": account["email"], "password": "test1234"})
 
-    r = client.patch("/api/me", json={"dept": "전자과", "academic_status": "휴학"})
+    r = client.patch("/api/me", json={"dept": "전자공학과", "academic_status": "휴학"})
     assert r.status_code == 200
-    assert r.json()["dept"] == "전자과"
+    assert r.json()["dept"] == "전자공학과"
     assert r.json()["academic_status"] == "휴학"
 
     # 잠긴 필드는 보내도 무시된다 (기획서 §4.3)
@@ -263,7 +263,7 @@ def test_grade_is_editable_and_clearable(client, account):
     assert client.patch("/api/me", json={"grade": 3}).json()["grade"] == 3
     # 명시적 null 은 "비우기". 아예 안 보내면 그대로 둔다
     assert client.patch("/api/me", json={"grade": None}).json()["grade"] is None
-    assert client.patch("/api/me", json={"dept": "전자과"}).json()["grade"] is None
+    assert client.patch("/api/me", json={"dept": "전자공학과"}).json()["grade"] is None
 
     r = client.patch("/api/me", json={"grade": 9})
     assert r.status_code == 400

@@ -138,7 +138,7 @@ def test_student_id_can_be_reused(client, make_user, auth_cookie):
 
     r = client.post("/api/auth/signup", json={
         "email": email, "password": "test1234", "student_id": sid,
-        "name": "재가입자", "dept": "컴퓨터정보과", "birth": "2005-01-01", "gender": "남",
+        "name": "재가입자", "dept": "컴퓨터공학과", "birth": "2005-01-01", "gender": "남",
     })
     assert r.status_code == 201
 

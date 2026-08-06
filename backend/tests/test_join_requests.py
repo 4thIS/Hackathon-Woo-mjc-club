@@ -110,7 +110,7 @@ def test_list_join_requests_hides_sensitive_fields(client, make_user, make_club,
     assert len(items) == 1
     item = items[0]
     assert item["name"] == "박찬우"
-    assert item["dept"] == "테스트학과"
+    assert item["dept"] == "컴퓨터공학과"
     assert "grade" in item
     assert item["answers"] == {"motive": "x"}
     assert set(item) == {"id", "name", "dept", "grade", "answers", "created_at", "status"}
