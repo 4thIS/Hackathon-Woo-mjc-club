@@ -4,6 +4,7 @@
  * 한 칸 내리면 헤더 밑에 붙는다 — JS 없이 배치로만 해결한다.
  */
 import { RouterLink } from 'vue-router'
+import logoFull from '../assets/logo-full.png'
 
 const props = defineProps({
   stats: { type: Object, default: null },
@@ -24,10 +25,8 @@ const val = (k) => {
     </div>
 
     <div class="brand-body">
-      <!-- 공식 로고를 받으면 이 블록을 <img src="/assets/mjc-logo.svg" alt="명지전문대학"> 로 교체 -->
       <div class="logo-slot">
-        <b>명지전문대학 로고</b>
-        <span>공식 로고 파일을<br><code>assets/mjc-logo.svg</code> 로 넣고<br>이 자리를 교체</span>
+        <img :src="logoFull" alt="MJC Club Archive" width="720" height="427">
       </div>
 
       <div class="brand-txt">
@@ -81,14 +80,9 @@ const val = (k) => {
   padding: clamp(32px, 5vh, 64px) clamp(24px, 5vw, 72px) clamp(28px, 4vh, 52px);
 }
 
-.logo-slot {
-  justify-self: center; width: min(300px, 72%); aspect-ratio: 1;
-  border: 2px dashed var(--line); border-radius: 50%;
-  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
-  color: var(--dim); text-align: center; padding: 26px;
-}
-.logo-slot b { font-size: 14.5px; font-weight: 700; color: var(--ink); }
-.logo-slot span { font-size: 11.5px; line-height: 1.6; }
+/* 배경이 투명한 로고다. 판·테두리 없이 그대로 놓는다 */
+.logo-slot { justify-self: center; width: min(380px, 86%); line-height: 0; }
+.logo-slot img { width: 100%; height: auto; display: block; }
 
 .brand-txt { max-width: 60ch; }
 .brand-txt .lead {
@@ -121,7 +115,7 @@ const val = (k) => {
 
 @media (max-width: 860px) {
   .brand-body { grid-template-columns: 1fr; gap: 26px; text-align: center; }
-  .logo-slot { width: min(220px, 60%); }
+  .logo-slot { width: min(300px, 78%); }
   .brand-txt { margin: 0 auto; }
   .brand-meta { justify-content: center; }
   .go { justify-content: center; }
