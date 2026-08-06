@@ -59,8 +59,35 @@ async function generate() {
   }
 }
 
+/* 파일 선택 — 네이티브 <input type=file> 버튼은 브라우저마다 생김새가 달라
+ * 폼의 다른 칸과 따로 논다. 입력은 숨기고 우리 버튼으로 연다 (디자인 §6-3). */
+const photoInput = ref(null)
+const pdfInput = ref(null)
+
 function onPhotos(e) { photoFiles.value = Array.from(e.target.files ?? []) }
 function onPdf(e) { pdfFile.value = e.target.files?.[0] ?? null }
+
+function clearPhotos() {
+  photoFiles.value = []
+  if (photoInput.value) photoInput.value.value = ''
+}
+function clearPdf() {
+  pdfFile.value = null
+  if (pdfInput.value) pdfInput.value.value = ''
+}
+
+function sizeText(bytes) {
+  if (!bytes && bytes !== 0) return ''
+  const mb = bytes / (1024 * 1024)
+  return mb >= 1 ? `${mb.toFixed(1)}MB` : `${Math.max(1, Math.round(bytes / 1024))}KB`
+}
+
+const photoSummary = computed(() => {
+  const n = photoFiles.value.length
+  if (!n) return ''
+  const total = photoFiles.value.reduce((s, f) => s + (f.size ?? 0), 0)
+  return `${n}장 · ${sizeText(total)}`
+})
 </script>
 
 <template>
@@ -85,13 +112,47 @@ function onPdf(e) { pdfFile.value = e.target.files?.[0] ?? null }
 
       <div class="fld">
         <label for="ai-photos">사진 (선택)</label>
-        <input id="ai-photos" type="file" accept="image/*" multiple :disabled="pending" @change="onPhotos">
+        <button type="button" class="pick" :class="{ filled: photoFiles.length }" :disabled="pending"
+                @click="photoInput?.click()">
+          <span class="ico" aria-hidden="true">🖼</span>
+          <span class="txt">
+            <b>{{ photoFiles.length ? `사진 ${photoFiles.length}장` : '사진 고르기' }}</b>
+            <small>{{ photoFiles.length ? photoSummary : 'jpg · png · webp · 여러 장' }}</small>
+          </span>
+          <span class="cta">{{ photoFiles.length ? '바꾸기' : '찾아보기' }}</span>
+        </button>
+        <input id="ai-photos" ref="photoInput" class="sr" type="file" accept="image/*" multiple
+               :disabled="pending" @change="onPhotos">
+
+        <ul v-if="photoFiles.length" class="picked">
+          <li v-for="(f, i) in photoFiles" :key="`${f.name}-${i}`">
+            <span class="nm">{{ f.name }}</span>
+            <span class="sz">{{ sizeText(f.size) }}</span>
+          </li>
+        </ul>
+        <p v-if="photoFiles.length" class="hint">
+          <button type="button" class="lnk" :disabled="pending" @click="clearPhotos">모두 지우기</button>
+        </p>
         <p class="hint">메모에 적힌 사실을 구체화하는 데만 씁니다.</p>
       </div>
 
       <div class="fld">
         <label for="ai-pdf">활동 결과보고서 PDF (선택)</label>
-        <input id="ai-pdf" type="file" accept="application/pdf" :disabled="pending" @change="onPdf">
+        <button type="button" class="pick" :class="{ filled: !!pdfFile }" :disabled="pending"
+                @click="pdfInput?.click()">
+          <span class="ico" aria-hidden="true">📄</span>
+          <span class="txt">
+            <b>{{ pdfFile ? pdfFile.name : 'PDF 고르기' }}</b>
+            <small>{{ pdfFile ? sizeText(pdfFile.size) : '결과보고서 한 부' }}</small>
+          </span>
+          <span class="cta">{{ pdfFile ? '바꾸기' : '찾아보기' }}</span>
+        </button>
+        <input id="ai-pdf" ref="pdfInput" class="sr" type="file" accept="application/pdf"
+               :disabled="pending" @change="onPdf">
+
+        <p v-if="pdfFile" class="hint">
+          <button type="button" class="lnk" :disabled="pending" @click="clearPdf">선택 취소</button>
+        </p>
         <p class="hint">서버가 텍스트를 뽑아 씁니다. 스캔본은 읽지 못합니다.</p>
       </div>
     </div>
@@ -128,9 +189,50 @@ function onPdf(e) { pdfFile.value = e.target.files?.[0] ?? null }
 .ai-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 18px; }
 .ai-grid .memo { grid-column: 1 / -1; }
 .fld textarea { min-height: 74px; resize: vertical; }
-.fld input[type="file"] { padding: 8px 10px; font-size: 13px; }
 .fld :disabled { opacity: .55; cursor: not-allowed; }
 .hint { margin-top: 5px; }
+
+/* 파일 선택 — 네이티브 버튼 대신 폼의 다른 칸과 같은 높이·테두리를 쓴다 */
+.sr {
+  position: absolute; width: 1px; height: 1px; padding: 0;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+.pick {
+  width: 100%; display: flex; align-items: center; gap: 11px;
+  border: 1.5px dashed var(--line); border-radius: var(--r-input);
+  background: var(--bg); color: var(--ink); font: inherit; text-align: left;
+  padding: 10px 12px; cursor: pointer;
+  transition: border-color var(--t-hover), background var(--t-hover);
+}
+.pick:hover:not(:disabled) { border-color: var(--accent); background: var(--chip); }
+.pick:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.pick.filled { border-style: solid; border-color: var(--accent); background: var(--card); }
+.pick .ico { font-size: 17px; line-height: 1; flex: none; }
+.pick .txt { min-width: 0; flex: 1; display: block; }
+.pick .txt b {
+  display: block; font-size: 13.5px; font-weight: 700;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.pick .txt small { display: block; margin-top: 2px; font-size: 11.5px; color: var(--dim); }
+.pick .cta {
+  flex: none; padding: 4px 10px; border-radius: var(--r-chip);
+  background: var(--chip); border: 1px solid var(--line);
+  font-size: 11.5px; font-weight: 700; color: var(--dim);
+}
+.pick.filled .cta { background: var(--accent); border-color: transparent; color: var(--onAccent); }
+
+.picked { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.picked li {
+  display: flex; gap: 8px; align-items: baseline;
+  font-size: 12px; color: var(--dim);
+}
+.picked .nm { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.picked .sz { flex: none; }
+
+.lnk {
+  border: none; background: none; padding: 0; font: inherit; font-size: 12px;
+  color: var(--accent); font-weight: 700; text-decoration: underline; cursor: pointer;
+}
 
 .ai-act { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 16px; }
 .ai-act .hint { margin-top: 0; }

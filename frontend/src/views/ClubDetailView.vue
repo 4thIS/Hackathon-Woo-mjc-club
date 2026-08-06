@@ -82,7 +82,9 @@ const applyReason = computed(() => {
 
 function onApply() {
   if (!recruitOpen.value) { closedDlg.value?.showModal(); return }
-  if (!loggedIn.value) { router.push({ name: 'login', query: { next: route.fullPath } }); return }
+  // 로그인은 모달이다 (디자인 기획 §6-2). name:'login' 으로 push 하면 라우터가 '/' 로
+  // 리다이렉트해 보던 동아리를 잃는다 — 현재 주소에 ?auth=login 만 붙여 헤더의 모달을 연다.
+  if (!loggedIn.value) { router.replace({ path: route.path, query: { ...route.query, auth: 'login' } }); return }
   if (applyDisabled.value) return
   joinDlg.value?.open()
 }
@@ -108,6 +110,8 @@ async function load() {
 
 onMounted(load)
 watch(() => props.id, load)
+// 모달에서 로그인하면 화면은 그대로 남는다 — my(가입 가능 여부)를 다시 받아야 버튼이 맞는다
+watch(() => auth.isLoggedIn, load)
 </script>
 
 <template>
