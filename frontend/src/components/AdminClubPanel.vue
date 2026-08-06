@@ -6,8 +6,7 @@
  */
 import { onMounted, reactive, ref } from 'vue'
 import api from '../api'
-
-const CATEGORIES = ['학술·전공', '공연·예술', '체육', '봉사', '취미·교양']
+import { CATEGORY_NAMES as CATEGORIES } from './ClubCategory'
 
 const clubs = ref([])
 const total = ref(0)

@@ -29,7 +29,7 @@
   --cat-sports-a:   #DCEBF9;  --cat-sports-b:   #C3DBF1;
   --cat-volunteer-a:#FBE7DE;  --cat-volunteer-b:#F3D0BF;
   --cat-hobby-a:    #E3F0E2;  --cat-hobby-b:    #CBE0C9;
-  --cat-religion-a: #EDE9E3;  --cat-religion-b: #DED8CE;
+  --cat-religion-a: #EAECEF;  --cat-religion-b: #DADDE2;
 
   /* 형태 — §4 */
   --r-card: 20px;
@@ -68,7 +68,7 @@
   --cat-sports-a:   #2E4266;  --cat-sports-b:   #1F2E4A;
   --cat-volunteer-a:#523A30;  --cat-volunteer-b:#382720;
   --cat-hobby-a:    #314E41;  --cat-hobby-b:    #21352C;
-  --cat-religion-a: #3A3630;  --cat-religion-b: #2A2721;
+  --cat-religion-a: #33363A;  --cat-religion-b: #24272B;
 }
 
 /* --- 기본 --------------------------------------------------------- */

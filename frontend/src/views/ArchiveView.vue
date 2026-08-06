@@ -8,15 +8,10 @@
  */
 import { ref, computed, onMounted, nextTick } from 'vue'
 import api from '../api'
+import { CATEGORY_NAMES, catKey } from '../components/ClubCategory'
 
-/* 카테고리 순서 = 화면에 흐르는 순서. 색은 theme.css 의 카테고리 5색 토큰만 쓴다 */
-const CATS = [
-  { nm: '학술·전공', v: 'var(--cat-academic-b)' },
-  { nm: '공연·예술', v: 'var(--cat-art-b)' },
-  { nm: '체육', v: 'var(--cat-sports-b)' },
-  { nm: '봉사', v: 'var(--cat-volunteer-b)' },
-  { nm: '취미·교양', v: 'var(--cat-hobby-b)' },
-]
+/* 카테고리 순서 = 화면에 흐르는 순서. 색은 theme.css 의 카테고리 색 토큰만 쓴다 */
+const CATS = CATEGORY_NAMES.map((nm) => ({ nm, v: `var(--cat-${catKey(nm)}-b)` }))
 
 const clubs = ref([])
 const loading = ref(true)

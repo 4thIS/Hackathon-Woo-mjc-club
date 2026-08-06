@@ -10,6 +10,9 @@ export const CATEGORIES = {
   '종교': { key: 'religion', emoji: '🕊️' },
 }
 
+/** 분야 이름의 단일 출처 — 표시 순서 그대로. 하드코딩 목록을 만들지 말고 이걸 import 하라 */
+export const CATEGORY_NAMES = Object.keys(CATEGORIES)
+
 export const catKey = (c) => CATEGORIES[c]?.key ?? 'academic'
 export const catEmoji = (c) => CATEGORIES[c]?.emoji ?? '🎈'
 
