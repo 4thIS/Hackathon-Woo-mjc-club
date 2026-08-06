@@ -41,7 +41,7 @@
 ### 0.2 열거값 (문자열 그대로 주고받는다)
 
 ```
-category         학술·전공 | 공연·예술 | 체육 | 봉사 | 취미·교양
+category         학술·전공 | 공연·예술 | 체육 | 봉사 | 취미·교양 | 종교
 recruit_status   모집중 | 모집마감 | 상시모집
 club_status      활동중 | 보관
 academic_status  재학 | 휴학 | 졸업

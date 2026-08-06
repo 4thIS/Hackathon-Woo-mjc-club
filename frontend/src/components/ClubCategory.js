@@ -7,6 +7,7 @@ export const CATEGORIES = {
   '체육': { key: 'sports', emoji: '🏃' },
   '봉사': { key: 'volunteer', emoji: '🤝' },
   '취미·교양': { key: 'hobby', emoji: '🎲' },
+  '종교': { key: 'religion', emoji: '🕊️' },
 }
 
 export const catKey = (c) => CATEGORIES[c]?.key ?? 'academic'
