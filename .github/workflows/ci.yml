@@ -21,11 +21,15 @@ jobs:
       - uses: dorny/paths-filter@v3
         id: f
         with:
+          predicate-quantifier: every   # '!' 제외 패턴이 동작하려면 필요
           filters: |
+            # 문서만 바뀐 PR 은 빌드를 태우지 않는다
             backend:
               - 'backend/**'
+              - '!backend/**/*.md'
             frontend:
               - 'frontend/**'
+              - '!frontend/**/*.md'
 
   backend:
     needs: changes
