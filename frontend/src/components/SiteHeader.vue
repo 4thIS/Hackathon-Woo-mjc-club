@@ -54,6 +54,8 @@ function toggle() {
       <nav>
         <!-- 홈은 왼쪽 로고가 맡는다. 동아리 개설 진입점은 아카이브 화면(제목 옆)에 둔다 -->
         <RouterLink to="/archive">아카이브</RouterLink>
+        <!-- 아카이브가 '동아리를 찾는' 곳이라면 피드는 '지금 무슨 일이 있는지' 보는 곳이다 -->
+        <RouterLink to="/feed">전체 피드</RouterLink>
       </nav>
 
       <div class="right">
