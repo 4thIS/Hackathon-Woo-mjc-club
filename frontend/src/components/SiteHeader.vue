@@ -4,6 +4,7 @@
 import { onMounted, ref, watch } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import AuthDialog from './AuthDialog.vue'
+import RecommendDialog from './RecommendDialog.vue'
 import logoMark from '../assets/logo-mark.png'
 import { useAuth } from '../stores/auth'
 
@@ -18,6 +19,7 @@ async function signOut() {
 }
 const theme = ref('light')
 const authDlg = ref(null)   // 로그인·회원가입은 모달이다 (디자인 기획 §6-2)
+const recDlg = ref(null)    // 성향 분석 — 설문도 결과도 저장하지 않는다
 
 onMounted(() => {
   const saved = localStorage.getItem('theme')
@@ -59,6 +61,7 @@ function toggle() {
       <div class="right">
         <button class="btn ghost icon" @click="toggle" aria-label="테마 전환">◐</button>
         <template v-if="auth.isLoggedIn">
+          <button class="btn ghost" @click="recDlg?.open()">성향 분석</button>
           <RouterLink v-if="auth.isAdmin" to="/admin" class="btn ghost">관리자</RouterLink>
           <RouterLink to="/me" class="btn">내 정보</RouterLink>
           <button class="btn ghost" @click="signOut">로그아웃</button>
@@ -71,6 +74,7 @@ function toggle() {
     </div>
 
     <AuthDialog ref="authDlg" />
+    <RecommendDialog ref="recDlg" :has-key="auth.hasAiKey" />
   </header>
 </template>
 
