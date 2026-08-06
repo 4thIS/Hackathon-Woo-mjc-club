@@ -4,7 +4,7 @@
  * 기획: 기획서 §7 (특히 §7.2 환각 방지 · §4.5 개인 키) · api.md §7
  * 디자인: 프론트엔드 디자인 기획 §6 남은 페이지 제작 규칙 (§6-3 폼 · §6-5 warn 박스)
  */
-import { ref, computed } from 'vue'
+import { ref, computed, watch, onBeforeUnmount } from 'vue'
 import api from '../api'
 
 const props = defineProps({
@@ -30,7 +30,28 @@ const buttonTitle = computed(() =>
     : '내 정보에서 AI API 키를 등록하면 사용할 수 있어요',
 )
 
-const emit = defineEmits(['draft'])
+/* 'pending' 은 편집 폼(제목·본문)도 같이 물러나게 하려고 부모에 알린다 */
+const emit = defineEmits(['draft', 'pending'])
+watch(pending, (v) => emit('pending', v))
+
+/* 생성은 10초 안팎 걸린다. 그동안 화면이 멈춘 것처럼 보이면 사용자는 버튼을 다시 누른다 —
+ * 무엇을 하는 중인지, 얼마나 지났는지를 계속 보여준다. */
+const STEPS = ['재료를 읽는 중', '내용을 정리하는 중', '문장을 다듬는 중', '거의 다 됐어요']
+const elapsed = ref(0)
+let timer = null
+
+const stepText = computed(() => STEPS[Math.min(Math.floor(elapsed.value / 4), STEPS.length - 1)])
+
+function startProgress() {
+  elapsed.value = 0
+  clearInterval(timer)
+  timer = setInterval(() => { elapsed.value += 1 }, 1000)
+}
+function stopProgress() {
+  clearInterval(timer)
+  timer = null
+}
+onBeforeUnmount(stopProgress)
 
 async function generate() {
   if (disabled.value) return
@@ -38,6 +59,7 @@ async function generate() {
   error.value = ''
   visionNote.value = ''
   pending.value = true
+  startProgress()
   try {
     const draft = await api.aiDraft({
       club_id: props.clubId,
@@ -56,6 +78,7 @@ async function generate() {
     else error.value = e.message
   } finally {
     pending.value = false
+    stopProgress()
   }
 }
 
@@ -91,7 +114,16 @@ const photoSummary = computed(() => {
 </script>
 
 <template>
-  <section class="ai card" aria-labelledby="ai-hd">
+  <section class="ai card" :class="{ busy: pending }" aria-labelledby="ai-hd" :aria-busy="pending">
+    <!-- 생성 중 — 입력부는 반투명하게 물러나고 그 위에 진행 상태가 뜬다 -->
+    <div v-if="pending" class="veil" aria-hidden="true">
+      <div class="veil-in">
+        <span class="orb"><i></i><i></i><i></i></span>
+        <p class="veil-t">AI가 초안을 쓰는 중</p>
+        <p class="veil-s">{{ stepText }} · {{ elapsed }}초</p>
+      </div>
+    </div>
+
     <div class="ai-hd">
       <p class="eyebrow">AI 초안</p>
       <h2 id="ai-hd">재료를 올리면 제목·본문·태그 초안을 만들어 드려요</h2>
@@ -106,7 +138,7 @@ const photoSummary = computed(() => {
         <textarea id="ai-memo" v-model="memo" :disabled="pending"
                   placeholder="10/12 성북동 출사, 12명 참여, 필름 현상은 다음 주"></textarea>
         <p class="hint">
-          사실은 메모와 PDF에서만 가져옵니다. 사진만으로는 초안을 만들지 않습니다 (기획서 §7.2).
+          사실은 메모와 PDF에서만 가져옵니다. 사진만으로는 초안을 만들지 않습니다.
         </p>
       </div>
 
@@ -166,11 +198,13 @@ const photoSummary = computed(() => {
         내 정보에서 AI API 키를 등록하면 사용할 수 있어요.
         <RouterLink class="link" to="/me">내 정보로 가기</RouterLink>
       </p>
-      <p v-else-if="pending" class="hint">사진이 있으면 10초쯤 걸립니다.</p>
+      <p v-else-if="pending" class="hint" role="status">
+        {{ stepText }}… 사진이 있으면 10초쯤 걸립니다. 창을 닫지 말아 주세요.
+      </p>
       <p v-else class="hint">초안이 아래 입력란에 채워집니다. 확인하고 고쳐서 올려주세요.</p>
     </div>
 
-    <!-- MEMO_REQUIRED 전용 자리 — 에러가 아니라 요청이다 (기획서 §7.2) -->
+    <!-- MEMO_REQUIRED 전용 자리 — 에러가 아니라 요청이다 -->
     <p v-if="memoRequired" class="warn box">{{ memoRequired }}</p>
     <p v-if="error" class="warn box">{{ error }}</p>
     <p v-if="visionNote" class="privacy box">{{ visionNote }}</p>
@@ -178,8 +212,57 @@ const photoSummary = computed(() => {
 </template>
 
 <style scoped>
-.ai { padding: 20px 22px 22px; }
+.ai { position: relative; padding: 20px 22px 22px; overflow: hidden; }
 .ai:hover { box-shadow: 0 5px 16px var(--shadow); transform: none; }
+
+/* --- 생성 중 --- */
+
+/* 위쪽 가장자리를 훑고 지나가는 띠 — 멈추지 않고 있다는 첫 신호 */
+.ai.busy::before {
+  content: ""; position: absolute; left: 0; top: 0; height: 3px; width: 42%;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  animation: sweep 1.5s ease-in-out infinite;
+}
+@keyframes sweep {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(340%); }
+}
+
+/* 입력부는 물러나되 완전히 사라지지는 않는다 — 무엇을 올렸는지 계속 보인다 */
+.ai.busy .ai-hd, .ai.busy .ai-grid { opacity: .28; filter: blur(1.5px); pointer-events: none; }
+.ai .ai-hd, .ai .ai-grid { transition: opacity .3s ease, filter .3s ease; }
+
+.veil {
+  position: absolute; inset: 0; z-index: 3;
+  display: grid; place-items: center;
+  background: color-mix(in srgb, var(--card) 72%, transparent);
+  backdrop-filter: blur(1px);
+  animation: veil-in .28s ease;
+}
+@keyframes veil-in { from { opacity: 0; } to { opacity: 1; } }
+
+.veil-in { text-align: center; padding: 0 20px; }
+.veil-t { margin: 14px 0 0; font-size: 15px; font-weight: 700; letter-spacing: -.02em; }
+.veil-s { margin: 5px 0 0; font-size: 12.5px; color: var(--dim); font-variant-numeric: tabular-nums; }
+
+/* 점 셋이 차례로 부풀었다 가라앉는다 — 글을 고르는 리듬 */
+.orb { display: inline-flex; gap: 7px; align-items: center; }
+.orb i {
+  width: 9px; height: 9px; border-radius: 50%; background: var(--accent);
+  animation: breathe 1.25s ease-in-out infinite;
+}
+.orb i:nth-child(2) { animation-delay: .16s; }
+.orb i:nth-child(3) { animation-delay: .32s; }
+@keyframes breathe {
+  0%, 100% { transform: scale(.65); opacity: .35; }
+  45% { transform: scale(1.15); opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ai.busy::before, .orb i { animation: none; }
+  .ai.busy::before { width: 100%; opacity: .5; }
+  .orb i { opacity: .8; transform: none; }
+}
 
 .ai-hd { margin-bottom: 16px; }
 .ai-hd .eyebrow { margin: 0 0 4px; }

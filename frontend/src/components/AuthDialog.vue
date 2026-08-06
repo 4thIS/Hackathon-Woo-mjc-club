@@ -8,6 +8,7 @@ import { computed, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import api from '../api'
 import { useAuth } from '../stores/auth'
+import { CONSENTS } from '../content/terms'
 
 const auth = useAuth()
 const route = useRoute()
@@ -26,6 +27,15 @@ const su = reactive({
   studentId: '', mailLocal: '', domain: DOMAINS[0], password: '', password2: '',
   name: '', dept: '', grade: 1, birth: '', gender: '남',
 })
+
+/* 약관 동의 — 둘 다 필수다. 하나라도 빠지면 가입 버튼이 잠긴다 */
+const agreed = reactive(Object.fromEntries(CONSENTS.map((c) => [c.key, false])))
+const allAgreed = computed(() => CONSENTS.every((c) => agreed[c.key]))
+const someAgreed = computed(() => CONSENTS.some((c) => agreed[c.key]))
+
+function toggleAll(on) {
+  CONSENTS.forEach((c) => { agreed[c.key] = on })
+}
 
 /* 학번과 메일 주소는 별개다 — 학번이 곧 주소인 계정이 많을 뿐이라
  * 메일 칸을 비워두면 학번으로 채워준다. */
@@ -79,6 +89,10 @@ async function submitSignup() {
   error.value = ''
   if (su.password !== su.password2) {
     error.value = '비밀번호가 서로 다릅니다.'
+    return
+  }
+  if (!allAgreed.value) {
+    error.value = '이용약관과 개인정보 수집·이용에 동의해야 가입할 수 있습니다.'
     return
   }
   pending.value = true
@@ -239,6 +253,34 @@ async function resend() {
             <span>생년월일·성별은 계정 정보로만 보관합니다. 동아리장에게는
               <b>이름 · 학과 · 학년</b>만 전달됩니다.</span>
           </p>
+
+          <!-- 약관 동의 — 둘 다 필수. 각 항목은 접힌 채로 두고 눌러서 요약을 본다 -->
+          <div class="terms">
+            <label class="all">
+              <input type="checkbox" :checked="allAgreed"
+                     :indeterminate.prop="someAgreed && !allAgreed"
+                     @change="toggleAll($event.target.checked)">
+              <b>약관에 모두 동의합니다</b>
+            </label>
+
+            <div v-for="c in CONSENTS" :key="c.key" class="item">
+              <label class="one">
+                <input v-model="agreed[c.key]" type="checkbox">
+                <span>{{ c.label }}</span>
+                <em class="req-tag">필수</em>
+              </label>
+
+              <details class="brief">
+                <summary>내용 보기</summary>
+                <ul>
+                  <li v-for="(line, i) in c.brief" :key="i">{{ line }}</li>
+                </ul>
+                <RouterLink class="full" :to="`/terms#${c.docId}`" @click="close()">
+                  전문 보기 →
+                </RouterLink>
+              </details>
+            </div>
+          </div>
         </template>
 
         <p v-if="error" class="warn err">{{ error }}</p>
@@ -251,7 +293,9 @@ async function resend() {
                 @click="switchTo(tab === 'login' ? 'signup' : 'login')">
           {{ tab === 'login' ? '회원가입' : '로그인' }}
         </button>
-        <button class="btn" type="button" :disabled="pending"
+        <button class="btn" type="button"
+                :disabled="pending || (tab === 'signup' && !allAgreed)"
+                :title="tab === 'signup' && !allAgreed ? '약관에 동의해야 가입할 수 있습니다' : ''"
                 @click="tab === 'login' ? submitLogin() : submitSignup()">
           {{ pending ? '확인 중…' : (tab === 'login' ? '로그인' : '가입하기') }}
         </button>
@@ -295,6 +339,55 @@ dialog::backdrop { backdrop-filter: blur(3px); }
 
 /* Enter 로 제출되게만 두고 화면에는 보이지 않는다 (버튼은 sheet-ft 에 있다) */
 .hidden-submit { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+
+/* --- 약관 동의 --- */
+.terms {
+  border: var(--border); border-radius: var(--r-input);
+  padding: 12px 14px; margin-top: 2px;
+}
+.terms label { display: flex; align-items: center; gap: 9px; margin: 0; font-weight: 400; }
+.terms input[type="checkbox"] {
+  width: 16px; height: 16px; flex: none; margin: 0; padding: 0;
+  accent-color: var(--accent); cursor: pointer;
+}
+.terms .all { padding-bottom: 11px; border-bottom: 1px solid var(--line); font-size: 14px; }
+.terms .all b { font-weight: 700; letter-spacing: -.015em; }
+
+.item { padding-top: 11px; }
+.one { font-size: 13.5px; cursor: pointer; }
+.req-tag {
+  font-style: normal; margin-left: auto; flex: none;
+  font-size: 11px; font-weight: 700; color: var(--accent);
+}
+
+/* 작은 글씨 요약 — 접힌 채로 두고 눌러서 편다 */
+.brief { margin: 6px 0 0 25px; }
+.brief summary {
+  display: inline-block; list-style: none; cursor: pointer;
+  font-size: 12px; font-weight: 700; color: var(--dim);
+  text-decoration: underline; text-underline-offset: 3px;
+}
+.brief summary::-webkit-details-marker { display: none; }
+.brief summary:hover { color: var(--accent); }
+.brief[open] summary { margin-bottom: 7px; }
+.brief ul {
+  margin: 0; padding: 10px 12px; list-style: none;
+  background: var(--chip); border-radius: 10px;
+  display: flex; flex-direction: column; gap: 7px;
+}
+.brief li {
+  font-size: 11.5px; line-height: 1.7; color: var(--dim);
+  padding-left: 11px; position: relative;
+}
+.brief li::before {
+  content: ""; position: absolute; left: 0; top: .68em;
+  width: 3px; height: 3px; border-radius: 50%; background: var(--dim); opacity: .6;
+}
+.brief .full {
+  display: inline-block; margin-top: 7px;
+  font-size: 11.5px; font-weight: 700; color: var(--accent);
+}
+.brief .full:hover { text-decoration: underline; }
 
 @media (max-width: 560px) { .two { grid-template-columns: 1fr; } }
 </style>

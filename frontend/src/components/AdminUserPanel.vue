@@ -123,7 +123,7 @@ const leaderOf = (u) => u.clubs.filter((c) => c.role === '동아리장')
       </li>
     </ul>
 
-    <!-- 수정 모달 (디자인 기획 §6-2) -->
+    <!-- 수정 모달 -->
     <dialog ref="dlg" @click.self="dlg.close()">
       <div class="sheet-hd">
         <h2>{{ editing?.name }} 정보 수정</h2>

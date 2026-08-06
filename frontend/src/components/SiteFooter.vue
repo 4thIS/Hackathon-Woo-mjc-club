@@ -24,6 +24,7 @@ const YEAR = 2026
         <RouterLink to="/archive">동아리 아카이브</RouterLink>
         <RouterLink to="/clubs/new">동아리 개설 신청</RouterLink>
         <RouterLink to="/me">내 정보</RouterLink>
+        <RouterLink to="/terms">이용약관 · 개인정보 처리방침</RouterLink>
       </nav>
 
       <div class="col">

@@ -248,6 +248,9 @@ async function confirmRemove() {
   }
 }
 
+/* AI 초안을 만드는 동안 폼을 잠그고 물러나게 한다 (PostEditorAiPanel 이 알려준다) */
+const aiPending = ref(false)
+
 /* PostEditorAiPanel 이 초안을 넘겨주는 자리. */
 function applyDraft(draft) {
   if (!draft) return
@@ -281,9 +284,11 @@ function applyDraft(draft) {
       </header>
 
       <!-- AI 초안 -->
-      <PostEditorAiPanel :club-id="clubId" :has-key="auth.hasAiKey" @draft="applyDraft" />
+      <PostEditorAiPanel :club-id="clubId" :has-key="auth.hasAiKey"
+                         @draft="applyDraft" @pending="aiPending = $event" />
 
-      <form class="form card" novalidate @submit.prevent="save">
+      <!-- 초안이 오는 동안 폼도 함께 물러난다 — 곧 채워질 칸이라는 걸 보여준다 -->
+      <form class="form card" :class="{ 'ai-busy': aiPending }" novalidate @submit.prevent="save">
         <div class="fld">
           <label for="pe-title">제목<span class="req">*</span></label>
           <input id="pe-title" v-model="form.title" :class="{ bad: missing.includes('title') }"
@@ -372,7 +377,7 @@ function applyDraft(draft) {
       </form>
     </template>
 
-    <!-- 삭제 확인 — 브라우저 confirm() 대신 네이티브 <dialog> (디자인 §6-2) -->
+    <!-- 삭제 확인 — 브라우저 confirm() 대신 네이티브 <dialog> -->
     <dialog ref="removeDlg" class="narrow" @click.self="removeDlg.close()">
       <div class="sheet-hd">
         <h2>이 글을 삭제할까요?</h2>
@@ -406,6 +411,24 @@ function applyDraft(draft) {
 
 .form { margin-top: 18px; padding: 22px; }
 .form:hover { box-shadow: 0 5px 16px var(--shadow); transform: none; }
+
+/* AI 초안을 기다리는 동안 — 곧 채워질 칸이라 흐려두고 입력을 막는다.
+   제목·본문은 초안이 직접 들어오는 자리라 한 단계 더 물러난다 */
+.form { transition: opacity .3s ease, filter .3s ease; }
+.form.ai-busy { opacity: .55; filter: blur(.6px); pointer-events: none; user-select: none; }
+.form.ai-busy #pe-title, .form.ai-busy #pe-body {
+  opacity: .45;
+  border-color: var(--accent);
+  animation: await-fill 1.6s ease-in-out infinite;
+}
+@keyframes await-fill {
+  0%, 100% { background: var(--card); }
+  50% { background: var(--chip); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .form.ai-busy #pe-title, .form.ai-busy #pe-body { animation: none; }
+}
 
 .fld { margin-bottom: 18px; }
 .fld:last-of-type { margin-bottom: 0; }

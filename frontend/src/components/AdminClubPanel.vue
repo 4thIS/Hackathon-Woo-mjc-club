@@ -196,7 +196,7 @@ async function transfer() {
     <dialog ref="editDlg" @click.self="editDlg.close()">
       <div class="sheet-hd">
         <h2>{{ editing?.name }}</h2>
-        <p>이름·분야·창립년도·지도교수는 개설 때 확정됩니다 (기획서 §5.1).</p>
+        <p>이름·분야·창립년도·지도교수는 개설 때 확정됩니다.</p>
         <button class="x" aria-label="닫기" @click="editDlg.close()">✕</button>
       </div>
 
@@ -251,7 +251,7 @@ async function transfer() {
       </div>
     </dialog>
 
-    <!-- 동아리장 강제 교체 (기획서 §5.5) -->
+    <!-- 동아리장 강제 교체 -->
     <dialog ref="dlg" class="narrow" @click.self="dlg.close()">
       <div class="sheet-hd">
         <h2>동아리장 교체</h2>
