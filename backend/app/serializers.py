@@ -25,7 +25,10 @@ def club_summary(db: Session, club: Club) -> dict:
     }
 
 
-def user_brief(user: User) -> dict:
+def user_brief(user: User | None) -> dict:
+    """탈퇴한 작성자는 None 으로 들어온다. 글 자체는 동아리에 남는다."""
+    if user is None:
+        return {"id": None, "name": "탈퇴한 회원", "dept": ""}
     return {"id": user.id, "name": user.name, "dept": user.dept}
 
 

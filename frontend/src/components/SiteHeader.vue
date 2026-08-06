@@ -2,12 +2,19 @@
 /* 모든 페이지 공통 헤더 — 디자인 기획 §4.
    로그인 후 우측이 내 정보/관리/관리자로 바뀐다 (기획서 §8 권한별). */
 import { onMounted, ref, watch } from 'vue'
-import { RouterLink, useRoute } from 'vue-router'
+import { RouterLink, useRoute, useRouter } from 'vue-router'
 import AuthDialog from './AuthDialog.vue'
 import { useAuth } from '../stores/auth'
 
 const auth = useAuth()
 const route = useRoute()
+const router = useRouter()
+
+async function signOut() {
+  await auth.logout()
+  // 로그인이 필요한 화면에 있었다면 나가야 한다 (가드가 다시 잡기 전에)
+  if (route.meta.auth) router.replace('/')
+}
 const theme = ref('light')
 const authDlg = ref(null)   // 로그인·회원가입은 모달이다 (디자인 기획 §6-2)
 
@@ -52,6 +59,7 @@ function toggle() {
         <template v-if="auth.isLoggedIn">
           <RouterLink v-if="auth.isAdmin" to="/admin" class="btn ghost">관리자</RouterLink>
           <RouterLink to="/me" class="btn">내 정보</RouterLink>
+          <button class="btn ghost" @click="signOut">로그아웃</button>
         </template>
         <template v-else>
           <button class="btn ghost" @click="authDlg?.open('login')">로그인</button>
