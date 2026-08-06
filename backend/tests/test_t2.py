@@ -17,8 +17,8 @@ from app.models import Club, ClubMember, Post, User
 
 CLUB_A = "테스트동아리_T2_A"
 CLUB_B = "테스트동아리_T2_B"
-MEMBER_ID = "99000001"
-OUTSIDER_ID = "99000002"
+MEMBER_ID = "9900000001"
+OUTSIDER_ID = "9900000002"
 
 
 @pytest.fixture(scope="module")

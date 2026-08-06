@@ -71,7 +71,7 @@ async function resend() {
           <div class="fld">
             <label for="email">가입한 학교 이메일</label>
             <input id="email" v-model="email" type="email"
-                   placeholder="26011234@mjc.ac.kr" required>
+                   placeholder="2022261026@mjc.ac.kr" required>
           </div>
           <p v-if="error" class="warn">{{ error }}</p>
           <button class="btn wide" type="submit">인증 메일 다시 받기</button>

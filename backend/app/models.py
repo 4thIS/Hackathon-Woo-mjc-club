@@ -45,13 +45,17 @@ class User(Base):
 
     __tablename__ = "users"
 
-    id: Mapped[str] = mapped_column(String(16), primary_key=True)  # 학번
+    id: Mapped[str] = mapped_column(String(10), primary_key=True)  # 학번 — 10자리 숫자 고정
     email: Mapped[str] = mapped_column(String(120), unique=True, index=True)
     pw_hash: Mapped[str] = mapped_column(String(120))
     name: Mapped[str] = mapped_column(String(40))
     dept: Mapped[str] = mapped_column(String(60))
     birth: Mapped[date] = mapped_column(Date)
     gender: Mapped[str] = mapped_column(String(4))
+
+    # 학번에서 유추하지 않는다. 휴학·재수·편입이면 같은 학번이라도 학년이 다르다.
+    # 본인이 가입 때 고르고 '내 정보'에서 고친다 (기획서 §4.3).
+    grade: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     academic_status: Mapped[str] = mapped_column(String(8), default=enums.ACADEMIC_ENROLLED)
     is_admin: Mapped[bool] = mapped_column(Boolean, default=False)
@@ -64,15 +68,6 @@ class User(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
     memberships: Mapped[list[ClubMember]] = relationship(back_populates="user")
-
-    @property
-    def grade(self) -> int:
-        """학번 앞 2자리 = 입학년도. 동아리장에게는 학번 대신 이 값만 보인다 (기획서 §5.3)."""
-        try:
-            entered = 2000 + int(self.id[:2])
-        except ValueError:
-            return 0
-        return max(1, min(4, utcnow().year - entered + 1))
 
 
 class Club(Base):

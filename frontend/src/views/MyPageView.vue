@@ -15,7 +15,8 @@ const clubs = ref([])
 const requests = ref({ join: [], create: [], leave: [] })
 const loading = ref(true)
 
-const profile = reactive({ dept: '', academic_status: '재학' })
+// grade 는 서버에 저장된 값이고 null 일 수 있다 — 그때는 select 를 빈 값으로 둔다
+const profile = reactive({ dept: '', grade: '', academic_status: '재학' })
 const profileMsg = ref('')
 const profileErr = ref('')
 
@@ -37,6 +38,7 @@ const noRequests = computed(
 
 onMounted(async () => {
   profile.dept = me.value?.dept ?? ''
+  profile.grade = me.value?.grade ?? ''
   profile.academic_status = me.value?.academic_status ?? '재학'
   try {
     const [c, r] = await Promise.all([api.me.clubs(), api.me.requests()])
@@ -53,6 +55,7 @@ async function saveProfile() {
   try {
     auth.user = await api.me.update({
       dept: profile.dept,
+      grade: profile.grade === '' ? null : Number(profile.grade),
       academic_status: profile.academic_status,
     })
     profileMsg.value = '저장했습니다.'
@@ -61,6 +64,7 @@ async function saveProfile() {
     // 동아리장이면 졸업할 수 없다 (기획서 §4.3) — 화면 값도 원래대로 되돌린다
     profileErr.value = e.message
     profile.academic_status = me.value?.academic_status ?? '재학'
+    profile.grade = me.value?.grade ?? ''
   }
 }
 
@@ -165,7 +169,11 @@ async function withdraw() {
 <template>
   <div v-if="me" class="container page">
     <h1 class="page-title">내 정보</h1>
-    <p class="sub top">{{ me.name }} · {{ me.dept }} · {{ me.grade }}학년 · {{ me.email }}</p>
+    <p class="sub top">
+      {{ me.name }} · {{ me.dept }}
+      <template v-if="me.grade"> · {{ me.grade }}학년</template>
+      · {{ me.email }}
+    </p>
 
     <!-- 미인증 안내 (기획서 §4.2) -->
     <p v-if="!me.email_verified" class="warn banner">
@@ -186,6 +194,17 @@ async function withdraw() {
           <div class="fld">
             <label for="dept">학과</label>
             <input id="dept" v-model="profile.dept">
+          </div>
+          <div class="fld">
+            <label for="grade">학년</label>
+            <select id="grade" v-model="profile.grade">
+              <option value="">선택 안 함</option>
+              <option :value="1">1학년</option>
+              <option :value="2">2학년</option>
+              <option :value="3">3학년</option>
+              <option :value="4">4학년</option>
+            </select>
+            <p class="hint">휴학·편입 등으로 학번과 학년이 다를 수 있어 직접 고칩니다.</p>
           </div>
           <div class="fld">
             <label for="status">학적 상태</label>
