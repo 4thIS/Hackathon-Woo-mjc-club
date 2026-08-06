@@ -1,0 +1,237 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>색상 시안 A~D — 파스텔 퍼플 / 청보라</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#101019;font-family:Pretendard,system-ui,"Malgun Gothic",sans-serif}
+button{font:inherit;cursor:pointer}
+
+/* ── 페이지 크롬 ── */
+.top{
+  background:#101019;color:#E9E7F5;padding:16px 26px;display:flex;align-items:center;gap:14px;
+  border-bottom:1px solid #2A2940;
+}
+.top b{font-size:14px;letter-spacing:-.01em}
+.top span{font-size:12.5px;opacity:.55}
+.top .keys{margin-left:auto;font-size:12px;opacity:.45}
+
+.set{padding:34px 26px 8px}
+.set-hd{color:#E9E7F5;margin:0 auto 16px;max-width:1180px;display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+.set-hd h2{font-size:19px;margin:0;letter-spacing:-.02em}
+.set-hd .tag{font-size:12px;padding:3px 10px;border-radius:999px;background:#2A2940;color:#B6B2D4;font-weight:600}
+.set-hd p{font-size:13px;margin:0;opacity:.55;flex-basis:100%;line-height:1.6}
+
+.swatches{max-width:1180px;margin:0 auto 12px;display:flex;gap:6px;flex-wrap:wrap}
+.sw{display:flex;align-items:center;gap:7px;background:#1B1A2B;border:1px solid #2A2940;
+  border-radius:8px;padding:5px 10px 5px 6px;color:#B6B2D4;font-size:11px;font-variant-numeric:tabular-nums}
+.sw i{width:16px;height:16px;border-radius:5px;font-style:normal;border:1px solid rgba(255,255,255,.14)}
+
+/* ── 샘플 UI (팔레트 변수로만 그림) ── */
+.demo{
+  max-width:1180px;margin:0 auto;border-radius:20px;overflow:hidden;
+  background:var(--bg);color:var(--ink);border:1px solid #2A2940;
+}
+
+.hdr{display:flex;align-items:center;gap:14px;padding:15px 22px;border-bottom:1px solid var(--line);background:var(--card)}
+.hdr .logo{font-size:15.5px;font-weight:800;letter-spacing:-.02em}
+.hdr nav{display:flex;gap:16px;margin-left:8px;font-size:13.5px;color:var(--dim)}
+.hdr .right{margin-left:auto;display:flex;gap:8px;align-items:center}
+
+.btn{border:none;border-radius:10px;padding:9px 17px;font-size:13.5px;font-weight:700;
+  background:var(--accent);color:var(--onAccent)}
+.btn.ghost{background:transparent;color:var(--ink);border:1.5px solid var(--line);font-weight:600}
+.btn.sm{padding:7px 13px;font-size:12.5px;border-radius:9px}
+
+.body{padding:22px}
+.filters{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:18px}
+.chip{border:1.5px solid var(--line);background:var(--card);color:var(--dim);
+  border-radius:999px;padding:7px 15px;font-size:13px;font-weight:600}
+.chip.on{background:var(--accent);color:var(--onAccent);border-color:var(--accent)}
+
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:15px;margin-bottom:20px}
+.card{background:var(--card);border:1.5px solid var(--line);border-radius:16px;overflow:hidden}
+.card .th{height:96px;display:grid;place-items:center;font-size:2rem}
+.card .in{padding:13px 14px 15px}
+.card .nm{font-size:15px;font-weight:700;letter-spacing:-.01em}
+.card .ln{font-size:12.5px;color:var(--dim);margin-top:5px;line-height:1.5;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.card .ft{display:flex;align-items:center;gap:6px;margin-top:11px}
+.card .ft .n{margin-left:auto;font-size:11.5px;color:var(--dim)}
+.badge{font-size:11px;font-weight:700;padding:3px 9px;border-radius:999px}
+.badge.rec{background:var(--accent);color:var(--onAccent)}
+.badge.off{background:var(--chip);color:var(--dim)}
+
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:15px}
+.panel{background:var(--card);border:1.5px solid var(--line);border-radius:16px;padding:16px 17px}
+.panel .k{font-size:10.5px;font-weight:700;letter-spacing:.12em;color:var(--dim);margin:0 0 10px}
+.panel h4{margin:0 0 8px;font-size:14.5px;letter-spacing:-.01em}
+.panel p{margin:0;font-size:12.5px;color:var(--dim);line-height:1.65}
+
+/* AI 상태 카드 */
+.ai .drop{border:1.5px dashed var(--line);border-radius:12px;padding:16px;text-align:center;
+  font-size:12.5px;color:var(--dim);background:var(--bg)}
+.ai .warn{margin-top:10px;background:var(--warnBg);border:1.5px solid var(--warnLine);color:var(--warnInk);
+  border-radius:11px;padding:11px 13px;font-size:12.5px;line-height:1.6}
+.ai .go{margin-top:11px;width:100%}
+
+/* 빈 상태 */
+.empty{text-align:center;padding:8px 0 4px}
+.empty .ico{font-size:1.9rem;opacity:.45}
+.empty h4{margin:9px 0 5px;font-size:14px}
+.empty p{font-size:12.5px;color:var(--dim);margin:0 0 12px;line-height:1.6}
+
+/* 카테고리 색 5종 */
+.cats{display:flex;gap:7px;flex-wrap:wrap;margin-top:16px}
+.cat{font-size:12px;font-weight:700;padding:6px 13px;border-radius:9px}
+
+/* ── 팔레트 정의 ── */
+#A{
+  --bg:#FBFAFF; --card:#FFFFFF; --line:#E5E1F6; --chip:#EFECFC;
+  --ink:#453A6E; --dim:#948DB3; --accent:#7C6BC4; --onAccent:#FFFFFF;
+  --warnBg:#FBF0E4; --warnLine:#EDD6B8; --warnInk:#8A6633;
+  --c1:#E0DBF8; --c2:#F6DCEF; --c3:#D7E9F8; --c4:#FAE4DB; --c5:#DFEEDF;
+  --ci:#4B3F78;
+}
+#B{
+  --bg:#F3F5FD; --card:#FFFFFF; --line:#DBDEF2; --chip:#E6E9F9;
+  --ink:#333868; --dim:#7B81A6; --accent:#5B62C4; --onAccent:#FFFFFF;
+  --warnBg:#FBF0E4; --warnLine:#EBD5B6; --warnInk:#87642F;
+  --c1:#D9DDF6; --c2:#E8DAF3; --c3:#D2E6F4; --c4:#F5E1DA; --c5:#DAEBE4;
+  --ci:#333868;
+}
+#C{
+  --bg:#F8F6FD; --card:#FFFFFF; --line:#E1DAF1; --chip:#EBE4FA;
+  --ink:#2C2150; --dim:#786D98; --accent:#6742AC; --onAccent:#FFFFFF;
+  --warnBg:#FAEFE2; --warnLine:#E9D2B2; --warnInk:#7E5B29;
+  --c1:#E3D9F7; --c2:#F3D9EC; --c3:#D5E4F7; --c4:#F7E0D6; --c5:#DDEBD9;
+  --ci:#2C2150;
+}
+#D{
+  --bg:#16152A; --card:#211F3B; --line:#322F56; --chip:#2C2950;
+  --ink:#E8E5FA; --dim:#9A94C2; --accent:#A08FF2; --onAccent:#1A1830;
+  --warnBg:#3A2E22; --warnLine:#57432C; --warnInk:#E7C48C;
+  --c1:#3B3568; --c2:#4A3358; --c3:#2C3F5E; --c4:#4E382F; --c5:#2F4A3D;
+  --ci:#DCD8F4;
+}
+
+@media(max-width:900px){
+  .grid{grid-template-columns:1fr 1fr}
+  .row2{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<div class="top">
+  <b>색상 시안</b>
+  <span>파스텔 퍼플 · 청보라 4방향 — 같은 화면에 색만 바꿔 입힘</span>
+  <span class="keys">위에서부터 A · B · C · D</span>
+</div>
+
+<div id="sets"></div>
+
+<script>
+const SETS = [
+  {id:"A", nm:"라벤더 크림", tag:"가장 부드러움",
+   desc:"흰 바탕에 아주 옅은 보라를 깐 톤. 강조색이 채도 낮은 라벤더라 화면 전체가 조용하다. 사진이 많은 서비스에서 사진을 안 잡아먹는다. 단점 — 인상이 약해서 시연 프로젝터에서 밋밋해 보일 수 있다."},
+  {id:"B", nm:"페리윙클 미스트", tag:"청보라 쪽",
+   desc:"배경부터 푸른 기가 도는 청보라. 보라보다 파랑에 가까워서 차분하고 정돈된 인상. '학교 서비스' 느낌이 제일 강하다. 단점 — 무난한 만큼 개성은 A~D 중 제일 약하다."},
+  {id:"C", nm:"딥 바이올렛", tag:"대비 강함 · 추천",
+   desc:"배경과 카드는 파스텔로 유지하고 강조색만 진한 바이올렛으로 눌렀다. 버튼·배지가 확실히 눈에 띄고 글자 대비가 가장 높다. 프로젝터·스크린샷에서 제일 잘 버틴다."},
+  {id:"D", nm:"더스크 (다크)", tag:"임팩트 큼 · 위험",
+   desc:"짙은 남보라 배경에 파스텔 라벤더 강조. 시연 첫 화면 임팩트는 최고. 단점 — 활동 사진이 어두운 배경에서 튀어 보이고, 밝은 사진과 부딪힌다. 사진이 주인공인 서비스라 도박이다."},
+];
+
+const CATS = [["학술·전공","c1"],["공연·예술","c2"],["체육","c3"],["봉사","c4"],["취미·교양","c5"]];
+const CLUBS = [
+  {e:"💻", nm:"메이커스", ln:"학기마다 팀을 짜서 서비스를 하나씩 배포합니다.", n:38, rec:1, c:"c1"},
+  {e:"🎸", nm:"사운드 오브 명지", ln:"매주 목요일 지하 합주실. 악기를 처음 잡아도 무대에 섭니다.", n:41, rec:1, c:"c2"},
+  {e:"📷", nm:"필름노트", ln:"필름 카메라로 캠퍼스를 찍고 매달 인화해서 같이 봅니다.", n:24, rec:0, c:"c5"},
+];
+
+document.getElementById("sets").innerHTML = SETS.map(s=>`
+<section class="set">
+  <div class="set-hd">
+    <h2>${s.id} · ${s.nm}</h2>
+    <span class="tag">${s.tag}</span>
+    <p>${s.desc}</p>
+  </div>
+  <div class="swatches" id="sw-${s.id}"></div>
+
+  <div class="demo" id="${s.id}">
+    <div class="hdr">
+      <span class="logo">명지 동아리</span>
+      <nav><span>둘러보기</span><span>동아리 개설</span></nav>
+      <div class="right">
+        <button class="btn ghost sm">내 정보</button>
+        <button class="btn sm">동아리 관리</button>
+      </div>
+    </div>
+
+    <div class="body">
+      <div class="filters">
+        <button class="chip on">전체</button>
+        <button class="chip">학술·전공</button>
+        <button class="chip">공연·예술</button>
+        <button class="chip">체육</button>
+        <button class="chip">모집중만</button>
+      </div>
+
+      <div class="grid">
+        ${CLUBS.map(c=>`
+          <article class="card">
+            <div class="th" style="background:var(--${c.c})">${c.e}</div>
+            <div class="in">
+              <div class="nm">${c.nm}</div>
+              <div class="ln">${c.ln}</div>
+              <div class="ft">
+                <span class="badge ${c.rec?"rec":"off"}">${c.rec?"모집중":"모집마감"}</span>
+                <span class="n">부원 ${c.n} · 12기</span>
+              </div>
+            </div>
+          </article>`).join("")}
+      </div>
+
+      <div class="row2">
+        <div class="panel ai">
+          <p class="k">활동 글 작성</p>
+          <h4>AI 초안 생성</h4>
+          <div class="drop">사진을 끌어다 놓거나 클릭해서 선택</div>
+          <div class="warn">무슨 활동이었는지 한 줄만 적어주세요. 사진만으로는 초안을 만들지 않습니다.</div>
+          <button class="btn go">초안 생성</button>
+        </div>
+
+        <div class="panel">
+          <p class="k">가입 신청자</p>
+          <div class="empty">
+            <div class="ico">🗂️</div>
+            <h4>아직 새 신청이 없어요</h4>
+            <p>모집 상태를 '모집중'으로 바꾸면<br>메인 화면 위쪽에 노출됩니다.</p>
+            <button class="btn ghost sm">모집 상태 바꾸기</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="cats">
+        ${CATS.map(([n,v])=>`<span class="cat" style="background:var(--${v});color:var(--ci)">${n}</span>`).join("")}
+      </div>
+    </div>
+  </div>
+</section>`).join("");
+
+// 스와치는 실제 계산값에서 읽는다 — 정의와 표시가 어긋날 수 없다
+const KEYS = [["bg","배경"],["card","카드"],["line","경계"],["chip","칩"],["ink","글자"],["dim","보조"],["accent","강조"]];
+SETS.forEach(s=>{
+  const cs = getComputedStyle(document.getElementById(s.id));
+  document.getElementById("sw-"+s.id).innerHTML = KEYS.map(([k,label])=>{
+    const v = cs.getPropertyValue("--"+k).trim();
+    return `<span class="sw"><i style="background:${v}"></i>${label} ${v.toUpperCase()}</span>`;
+  }).join("");
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,483 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MJC Club Archive</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<style>
+/* ═══ 팔레트 A (라이트) ═══ */
+:root{
+  --bg:#FBFAFF; --card:#FFFFFF; --line:#E5E1F6; --chip:#EFECFC;
+  --ink:#453A6E; --dim:#948DB3; --accent:#7C6BC4; --onAccent:#FFFFFF;
+  --band:#C3B9EC; --shadow:rgba(97,80,160,.13); --shadowUp:rgba(97,80,160,.26);
+  --c1a:#E4DFFA; --c1b:#CFC6F2;
+  --c2a:#F8E1F2; --c2b:#EFC9E2;
+  --c3a:#DCEBF9; --c3b:#C3DBF1;
+  --c4a:#FBE7DE; --c4b:#F3D0BF;
+  --c5a:#E3F0E2; --c5b:#CBE0C9;
+  --catInk:#4B3F78;
+  color-scheme: light;
+}
+/* ═══ 팔레트 D (다크) ═══ */
+:root[data-theme="dark"]{
+  --bg:#16152A; --card:#211F3B; --line:#322F56; --chip:#2C2950;
+  --ink:#E8E5FA; --dim:#9A94C2; --accent:#A08FF2; --onAccent:#1A1830;
+  --band:#544D8C; --shadow:rgba(0,0,0,.45); --shadowUp:rgba(0,0,0,.62);
+  --c1a:#3E3872; --c1b:#2B2752;
+  --c2a:#4E3560; --c2b:#362342;
+  --c3a:#2E4266; --c3b:#1F2E4A;
+  --c4a:#523A30; --c4b:#382720;
+  --c5a:#314E41; --c5b:#21352C;
+  --catInk:#DCD8F4;
+  color-scheme: dark;
+}
+
+:root{ --hdr:64px; --titleH:clamp(148px,19vh,188px); }
+
+*{box-sizing:border-box}
+html{
+  /* 두 개의 정지 지점 — 캐러셀 화면과 브랜드 화면 */
+  scroll-snap-type: y mandatory;
+  scroll-padding-top: var(--hdr);
+  scroll-behavior:smooth;
+}
+body{
+  margin:0;background:var(--bg);color:var(--ink);
+  font-family:Pretendard,system-ui,"Malgun Gothic",sans-serif;
+  -webkit-font-smoothing:antialiased;transition:background .25s,color .25s;
+}
+button{font:inherit;cursor:pointer}
+:focus-visible{outline:2.5px solid var(--accent);outline-offset:3px;border-radius:8px}
+
+/* ── 헤더 ── */
+.hdr{
+  position:sticky;top:0;z-index:500;height:var(--hdr);display:flex;align-items:center;
+  gap:16px;padding:0 clamp(18px,3.5vw,42px);
+  background:color-mix(in srgb, var(--bg) 88%, transparent);
+  backdrop-filter:blur(10px);border-bottom:1px solid var(--line);
+}
+.hdr .logo{font-size:15.5px;font-weight:800;letter-spacing:-.025em}
+.hdr nav{display:flex;gap:18px;font-size:13.5px;color:var(--dim);margin-left:6px}
+.hdr nav a{text-decoration:none;color:inherit}
+.hdr nav a:hover{color:var(--ink)}
+.hdr .right{margin-left:auto;display:flex;gap:8px;align-items:center}
+
+.btn{border:none;border-radius:10px;padding:9px 17px;font-size:13.5px;font-weight:700;
+  background:var(--accent);color:var(--onAccent)}
+.btn.ghost{background:transparent;color:var(--ink);border:1.5px solid var(--line);font-weight:600}
+.btn.sm{padding:7px 13px;font-size:12.5px;border-radius:9px}
+.btn.icon{background:transparent;border:1.5px solid var(--line);color:var(--ink);
+  width:36px;height:36px;padding:0;border-radius:10px;display:grid;place-items:center;font-size:15px}
+
+/* ══════ 1번 화면 — 캐러셀 ══════ */
+#stage{
+  scroll-snap-align:start;
+  position:relative;height:calc(100vh - var(--hdr) - var(--titleH));min-height:400px;
+  overflow:hidden;cursor:grab;user-select:none;touch-action:pan-y;z-index:0;
+}
+#stage.dragging{cursor:grabbing}
+#stage svg,#cards{position:absolute;inset:0}
+#cards{pointer-events:none}
+.hint{
+  position:absolute;right:clamp(18px,3.5vw,42px);bottom:16px;
+  font-size:12px;color:var(--dim);display:flex;align-items:center;gap:7px;z-index:900;pointer-events:none;
+}
+.hint i{font-style:normal;animation:sway 2.6s ease-in-out infinite}
+@keyframes sway{0%,100%{transform:translateX(-3px)}50%{transform:translateX(3px)}}
+
+/* ══════ 2번 화면 — 브랜드 ══════ */
+#brand{
+  scroll-snap-align:start;
+  scroll-snap-stop:always;          /* 빠르게 튕겨도 이 화면은 건너뛰지 않는다 */
+  min-height:calc(100vh - var(--hdr));
+}
+
+/* 타이틀 — 두 화면을 잇는 경첩. 1번에선 화면 맨 아래, 2번에선 맨 위 */
+.title{
+  height:var(--titleH);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;
+  text-align:center;padding:0 20px;
+  background:var(--bg);
+  box-shadow:0 10px 24px -18px var(--shadow);
+  border-bottom:1px solid var(--line);
+}
+.title h1{
+  margin:0;font-size:clamp(30px,4.6vw,54px);font-weight:400;
+  letter-spacing:-.015em;line-height:1.1;
+}
+.title p{margin:0;font-size:clamp(12px,1.1vw,14px);color:var(--dim);letter-spacing:.01em}
+
+.brand-body{
+  min-height:calc(100vh - var(--hdr) - var(--titleH));
+  display:grid;grid-template-columns:minmax(280px,40%) 1fr;
+  align-items:center;gap:clamp(28px,5vw,72px);
+  padding:clamp(32px,5vh,64px) clamp(24px,5vw,72px) clamp(28px,4vh,52px);
+}
+
+/* 로고 자리 — 공식 로고 파일로 교체할 것 (아래 img 주석 참고) */
+.logo-slot{
+  justify-self:center;width:min(300px,72%);aspect-ratio:1;
+  border:2px dashed var(--line);border-radius:50%;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;
+  color:var(--dim);text-align:center;padding:26px;
+}
+.logo-slot b{font-size:14.5px;font-weight:700;color:var(--ink)}
+.logo-slot span{font-size:11.5px;line-height:1.6}
+
+.brand-txt{max-width:60ch}
+.brand-txt .lead{
+  font-size:clamp(17px,1.9vw,23px);line-height:1.55;margin:0 0 18px;
+  font-weight:700;letter-spacing:-.02em;
+}
+.brand-txt p{font-size:14.5px;line-height:1.85;color:var(--dim);margin:0 0 14px}
+.brand-meta{display:flex;gap:22px;flex-wrap:wrap;margin:24px 0 0;padding-top:20px;border-top:1px solid var(--line)}
+.brand-meta div{font-size:12.5px;color:var(--dim)}
+.brand-meta b{display:block;font-size:21px;color:var(--ink);font-weight:800;
+  letter-spacing:-.02em;font-variant-numeric:tabular-nums;margin-bottom:2px}
+.go{margin-top:28px;display:flex;justify-content:flex-end}
+.go a{
+  display:inline-flex;align-items:center;gap:9px;text-decoration:none;
+  font-size:15px;font-weight:700;color:var(--ink);
+  padding:12px 20px;border-radius:12px;border:1.5px solid var(--line);background:var(--card);
+}
+.go a:hover{border-color:var(--accent);color:var(--accent)}
+.go a i{font-style:normal;transition:transform .18s}
+.go a:hover i{transform:translateX(4px)}
+
+/* ── 활동 카드 (사진 + 제목만) ── */
+.card{
+  position:absolute;width:210px;pointer-events:auto;cursor:pointer;
+  background:var(--card);border:1.5px solid var(--line);border-radius:18px;overflow:hidden;
+  box-shadow:0 5px 16px var(--shadow);transition:box-shadow .16s;
+}
+.card:hover{box-shadow:0 12px 34px var(--shadowUp)}
+.card .photo{height:120px;background-size:cover;background-position:center;display:grid;place-items:center}
+.card .photo::after{content:attr(data-emoji);font-size:2.4rem;opacity:.55}
+.card .ttl{
+  padding:11px 13px 13px;font-size:14px;font-weight:700;line-height:1.35;letter-spacing:-.01em;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
+}
+
+.toast{
+  position:fixed;left:50%;bottom:28px;transform:translate(-50%,14px);
+  background:var(--ink);color:var(--bg);padding:11px 20px;border-radius:12px;
+  font-size:13.5px;font-weight:600;opacity:0;pointer-events:none;transition:.22s;z-index:1000;
+}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+
+@media(prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  .hint i{animation:none}
+}
+@media(max-width:860px){
+  .hdr nav{display:none}
+  .brand-body{grid-template-columns:1fr;gap:26px;text-align:center}
+  .logo-slot{width:min(220px,60%)}
+  .brand-txt{margin:0 auto}
+  .go{justify-content:center}
+}
+</style>
+</head>
+<body>
+
+<header class="hdr">
+  <span class="logo">MJC Club Archive</span>
+  <nav>
+    <a href="archive.html">둘러보기</a>
+    <a href="#">동아리 개설</a>
+  </nav>
+  <div class="right">
+    <button class="btn icon" id="theme" title="라이트/다크 전환" aria-label="테마 전환">◐</button>
+    <button class="btn ghost sm">로그인</button>
+    <button class="btn sm">회원가입</button>
+  </div>
+</header>
+
+<!-- ══ 1번 화면 ══ -->
+<section id="stage" aria-label="공개 활동 기록">
+  <svg id="band" aria-hidden="true"></svg>
+  <div id="cards"></div>
+  <div class="hint"><i>↔</i> 드래그해서 넘기기</div>
+</section>
+
+<!-- ══ 2번 화면 ══ -->
+<section id="brand">
+  <div class="title">
+    <h1>MJC Club Archive</h1>
+    <p>mjc hackathon project with Woo</p>
+  </div>
+
+  <div class="brand-body">
+    <!-- 공식 로고를 받으면 이 블록을 <img src="assets/mjc-logo.svg" alt="명지전문대학"> 로 교체 -->
+    <div class="logo-slot">
+      <b>명지전문대학 로고</b>
+      <span>공식 로고 파일을<br><code>assets/mjc-logo.svg</code> 로 넣고<br>이 자리를 교체</span>
+    </div>
+
+    <div class="brand-txt">
+      <p class="lead">설명 대신, 지난주에 뭘 했는지.</p>
+      <p>동아리 소개글은 어디나 비슷합니다. 그래서 이 아카이브는 소개 대신 <b>활동 기록</b>을 먼저 보여줍니다. 동아리장이 공개한 활동을 넘겨보다가, 마음에 드는 곳에 그 자리에서 가입하세요.</p>
+      <p>기록이 쌓이지 않는 이유는 관심이 없어서가 아니라 글 쓰기가 번거롭기 때문입니다. 동아리장이 사진과 한 줄 메모만 올리면 <b>명지전문대학 AI</b>가 활동 글 초안을 만들어 줍니다. 확인하고 고쳐서 올리기만 하면 됩니다.</p>
+
+      <div class="brand-meta">
+        <div><b>32</b>등록 동아리</div>
+        <div><b>22</b>모집중</div>
+        <div><b>218</b>활동 기록</div>
+        <div><b>5</b>분야</div>
+      </div>
+
+      <div class="go"><a href="archive.html">아카이브 바로가기 <i>→</i></a></div>
+    </div>
+  </div>
+</section>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ══════════ 데이터 ══════════ */
+const CLUBS = [
+  {nm:"메이커스",        cat:"학술·전공", c:1, e:"💻", n:38, rec:1, gen:12, ln:"학기마다 팀을 짜서 서비스를 하나씩 배포합니다. 기획부터 배포까지 전부 학생 손으로."},
+  {nm:"사운드 오브 명지", cat:"공연·예술", c:2, e:"🎸", n:41, rec:1, gen:18, ln:"매주 목요일 지하 합주실. 악기를 처음 잡아도 한 학기면 무대에 섭니다."},
+  {nm:"필름노트",        cat:"취미·교양", c:5, e:"📷", n:24, rec:0, gen:9,  ln:"필름 카메라로 캠퍼스를 찍고, 매달 한 번 인화해서 같이 봅니다."},
+  {nm:"한걸음",          cat:"봉사",     c:4, e:"🤝", n:33, rec:1, gen:15, ln:"근처 지역아동센터에서 주 1회 학습 멘토링을 합니다."},
+  {nm:"FC 명지",         cat:"체육",     c:3, e:"⚽", n:29, rec:1, gen:21, ln:"주말 아침 풋살장. 실력보다 출석이 중요합니다."},
+  {nm:"주사위",          cat:"취미·교양", c:5, e:"🎲", n:19, rec:1, gen:5,  ln:"보드게임 100종 보유. 공강 시간에 아무 때나 들르세요."},
+  {nm:"TALK:",           cat:"학술·전공", c:1, e:"🗣️", n:26, rec:0, gen:11, ln:"영어로만 대화하는 90분. 원어민 튜터가 매주 참여합니다."},
+  {nm:"크루 리듬",        cat:"공연·예술", c:2, e:"🕺", n:35, rec:1, gen:14, ln:"힙합·K팝 커버. 축제 무대와 길거리 공연을 준비합니다."},
+];
+
+/* 캐러셀 카드 = 공개 활동 글. 사진과 제목만 들어간다 */
+const POSTS = [
+  {club:1, t:"가을 정기공연 셋리스트 완성"},
+  {club:0, t:"교내 길찾기 웹앱 배포"},
+  {club:5, t:"보드게임 교내 대회 예선"},
+  {club:3, t:"지역아동센터 2학기 첫 수업"},
+  {club:7, t:"축제 무대 안무 완성"},
+  {club:2, t:"성북동 출사 — 필름 한 롤"},
+  {club:4, t:"전문대 리그 3승 1패"},
+  {club:6, t:"원어민 튜터와 첫 세션"},
+  {club:0, t:"신입생 Git 워크숍"},
+  {club:1, t:"신입 보컬 오디션 마감"},
+].map((p,i)=>({...p, id:i}));
+
+/* ══════════ 기하 — 레퍼런스에서 확정된 값 ══════════ */
+const GEO = {
+  R:1500, big:1.5, small:0.25, tilt:0.42, stepPx:268,
+  stem:36, cardH:164, damping:0.94, clickSlop:6,
+};
+const STEP = GEO.stepPx / GEO.R;
+const GAP  = STEP * 2;
+
+const wrapAngle = (raw,total)=>{ const a=((raw%total)+total)%total; return a>total/2 ? a-total : a; };
+
+function visibleHalf(R, cy, width, topPad = -60){
+  const halfX = Math.asin(Math.min(0.999,(width/2+120)/R));
+  const cosLim = (topPad-cy)/R;
+  const halfY = cosLim>=1 ? 0 : cosLim<=-1 ? Math.PI : Math.acos(cosLim);
+  return Math.max(0.15, Math.min(halfX, halfY));
+}
+
+function cardTransform(a, half, up, {cx,cy}){
+  const {R,big,small,tilt,stem,cardH} = GEO;
+  const k = Math.min(1, Math.abs(a)/half);
+  const f = (1-k)**1.35;
+  const scale = small + (big-small)*f;
+  const dist = up ? R - stem*scale - cardH*scale/2
+                  : R + stem*scale + cardH*scale/2;
+  return {
+    x: cx + dist*Math.sin(a),
+    y: cy + dist*Math.cos(a),
+    scale,
+    opacity: 0.25 + 0.75*f,
+    rotate: (-a*180/Math.PI)*tilt,
+  };
+}
+
+/* ══════════ 캐러셀 ══════════ */
+const NS = "http://www.w3.org/2000/svg";
+const stage = document.getElementById("stage");
+const svg   = document.getElementById("band");
+const layer = document.getElementById("cards");
+
+let offset=0, vel=0, dragging=false, lastX=0, lastT=0, downX=0, downY=0, moved=0, raf=null, gen=0, pressed=null;
+
+function buildCard(p){
+  const club = CLUBS[p.club];
+  const el = document.createElement("div");
+  el.className = "card";
+  el.dataset.id = p.id;
+  el.innerHTML =
+    `<div class="photo" data-emoji="${club.e}"
+       style="background-image:linear-gradient(145deg,var(--c${club.c}a),var(--c${club.c}b))"></div>
+     <div class="ttl">${p.t}</div>`;
+  return el;
+}
+
+function draw(){
+  const w = stage.clientWidth, h = stage.clientHeight;
+  // 무대가 낮으면 가운데 카드가 위로 잘린다. 배율을 줄여 눌러 담는다
+  GEO.big = h < 660 ? 1.26 : 1.5;
+  const cx = w/2, cy = h*0.53 - GEO.R;
+
+  svg.setAttribute("viewBox", `0 0 ${w} ${h}`);
+  svg.replaceChildren();
+  layer.replaceChildren();
+
+  const half = visibleHalf(GEO.R, cy, w);
+
+  const p1 = {x: cx+GEO.R*Math.sin(-half), y: cy+GEO.R*Math.cos(-half)};
+  const p2 = {x: cx+GEO.R*Math.sin(half),  y: cy+GEO.R*Math.cos(half)};
+  const band = document.createElementNS(NS,"path");
+  band.setAttribute("d", `M${p1.x},${p1.y} A${GEO.R},${GEO.R} 0 0 0 ${p2.x},${p2.y}`);
+  band.setAttribute("fill","none");
+  band.setAttribute("stroke","var(--band)");
+  band.setAttribute("stroke-width","3.5");
+  band.setAttribute("stroke-linecap","round");
+  svg.appendChild(band);
+
+  const total = POSTS.length*STEP + GAP;
+  const vis = [];
+  POSTS.forEach((p,i)=>{
+    const a = wrapAngle(i*STEP - offset, total);
+    if(Math.abs(a) > half) return;
+    vis.push({p, a, up: i%2===1});
+  });
+
+  // 작은 카드부터 그려야 가운데 카드가 맨 위로 온다
+  vis.map(v=>({...v, t: cardTransform(v.a, half, v.up, {cx,cy})}))
+     .sort((m,n)=>m.t.scale - n.t.scale)
+     .forEach(({p,a,up,t})=>{
+    const ax = cx + GEO.R*Math.sin(a), ay = cy + GEO.R*Math.cos(a);
+
+    const dot = document.createElementNS(NS,"circle");
+    dot.setAttribute("cx",ax); dot.setAttribute("cy",ay);
+    dot.setAttribute("r", 3.5*t.scale + 1.5);
+    dot.setAttribute("fill","var(--band)");
+    dot.setAttribute("opacity",t.opacity);
+    svg.appendChild(dot);
+
+    const edge = up ? GEO.R - GEO.stem*t.scale : GEO.R + GEO.stem*t.scale;
+    const stem = document.createElementNS(NS,"line");
+    stem.setAttribute("x1",ax); stem.setAttribute("y1",ay);
+    stem.setAttribute("x2", cx+edge*Math.sin(a));
+    stem.setAttribute("y2", cy+edge*Math.cos(a));
+    stem.setAttribute("stroke","var(--band)");
+    stem.setAttribute("stroke-width", 2.2*t.scale + 0.7);
+    stem.setAttribute("opacity",t.opacity);
+    svg.appendChild(stem);
+
+    // 호 위의 라벨 = 동아리명 (카드 안에는 사진과 제목만 둔다)
+    const ld = up ? GEO.R + 24*t.scale + 8 : GEO.R - 24*t.scale - 8;
+    const lx = cx + ld*Math.sin(a), ly = cy + ld*Math.cos(a);
+    const label = document.createElementNS(NS,"text");
+    label.setAttribute("x",lx);
+    label.setAttribute("y", ly + (up ? 13 : 0));
+    label.setAttribute("text-anchor","middle");
+    label.setAttribute("font-size", Math.max(9, 10*t.scale + 3));
+    label.setAttribute("font-weight","700");
+    label.setAttribute("fill","var(--ink)");
+    label.setAttribute("opacity", t.opacity);
+    label.setAttribute("font-family","inherit");
+    label.setAttribute("transform", `rotate(${t.rotate} ${lx} ${ly})`);
+    label.textContent = CLUBS[p.club].nm;
+    svg.appendChild(label);
+
+    const el = buildCard(p);
+    el.style.left = `${t.x}px`;
+    el.style.top  = `${t.y}px`;
+    el.style.transform = `translate(-50%,-50%) rotate(${t.rotate}deg) scale(${t.scale})`;
+    el.style.opacity = t.opacity;
+    el.style.zIndex = Math.round(t.scale*1000);
+    layer.appendChild(el);
+  });
+
+  // 트랙 끝 마감 — 처음과 끝의 경계
+  [-GAP/2, POSTS.length*STEP - STEP + GAP/2].forEach(edgeAngle=>{
+    const a = wrapAngle(edgeAngle - offset, total);
+    if(Math.abs(a) > half) return;
+    const tick = document.createElementNS(NS,"line");
+    tick.setAttribute("x1", cx+(GEO.R-14)*Math.sin(a));
+    tick.setAttribute("y1", cy+(GEO.R-14)*Math.cos(a));
+    tick.setAttribute("x2", cx+(GEO.R+14)*Math.sin(a));
+    tick.setAttribute("y2", cy+(GEO.R+14)*Math.cos(a));
+    tick.setAttribute("stroke","var(--band)");
+    tick.setAttribute("stroke-width","3.5");
+    tick.setAttribute("stroke-linecap","round");
+    svg.appendChild(tick);
+  });
+}
+
+function glide(){
+  const my = ++gen;
+  const step = ()=>{
+    if(my !== gen) return;          // 뒤이어 시작된 관성이 있으면 이 루프는 접는다
+    vel *= GEO.damping;
+    offset += vel;
+    draw();
+    if(Math.abs(vel) > 0.00008) raf = requestAnimationFrame(step);
+  };
+  step();
+}
+
+stage.addEventListener("pointerdown", e=>{
+  dragging = true; moved = 0;
+  // setPointerCapture 이후 click 은 stage 로 간다 — 눌린 카드를 기억해 release 에서 판정
+  pressed = e.target.closest?.(".card")?.dataset.id ?? null;
+  stage.classList.add("dragging");
+  stage.setPointerCapture(e.pointerId);
+  lastX = downX = e.clientX; downY = e.clientY;
+  lastT = performance.now();
+  vel = 0; gen += 1;
+  if(raf){ cancelAnimationFrame(raf); raf = null; }
+});
+
+stage.addEventListener("pointermove", e=>{
+  if(!dragging) return;
+  const now = performance.now();
+  const dx = e.clientX - lastX;
+  const dt = Math.max(1, now - lastT);
+  moved = Math.max(moved, Math.hypot(e.clientX-downX, e.clientY-downY));
+  offset -= dx / GEO.R;            // 끄는 방향의 반대로 흐른다
+  vel = (-(dx/GEO.R)/dt) * 16;
+  lastX = e.clientX; lastT = now;
+  draw();
+});
+
+const release = ()=>{
+  if(!dragging) return;
+  dragging = false;
+  stage.classList.remove("dragging");
+  if(moved < GEO.clickSlop){       // 6px 미만이면 끈 게 아니라 누른 것
+    if(pressed !== null) toast(`활동 글 상세로 이동 — ${POSTS[pressed].t}`);
+    pressed = null;
+    return;
+  }
+  pressed = null;
+  glide();
+};
+stage.addEventListener("pointerup", release);
+stage.addEventListener("pointercancel", release);
+addEventListener("resize", draw);
+
+/* ══════════ 테마 ══════════ */
+const root = document.documentElement;
+root.dataset.theme = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+document.getElementById("theme").onclick = ()=>{
+  root.dataset.theme = root.dataset.theme === "dark" ? "light" : "dark";
+};
+
+/* ══════════ 토스트 ══════════ */
+let tTimer;
+function toast(msg){
+  const el = document.getElementById("toast");
+  el.textContent = msg;
+  el.classList.add("on");
+  clearTimeout(tTimer);
+  tTimer = setTimeout(()=>el.classList.remove("on"), 1900);
+}
+
+draw();
+</script>
+</body>
+</html>
