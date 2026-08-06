@@ -512,6 +512,48 @@ gender           남 | 여
 
 `leader_id`는 동아리장 강제 교체(기획서 §5.5). 대상은 해당 동아리 부원이어야 한다.
 
+### `GET /api/admin/users` — `관리자`
+
+```
+?q=박찬우          이름·학번·학과·이메일 부분 일치
+&status=재학       학적 상태
+&admin=true        관리자만
+```
+
+```jsonc
+{ "total": 7, "items": [
+  { "id": "24010001", "email": "24010001@mjc.ac.kr", "name": "이우진",
+    "dept": "시각디자인과", "birth": "2005-03-11", "gender": "남", "grade": 3,
+    "academic_status": "재학", "email_verified": true, "is_admin": false,
+    "clubs": [ { "id": 1, "name": "필름사진동아리 그늘", "role": "동아리장", "membership": "활동중" } ] }
+] }
+```
+
+`clubs`를 함께 주는 이유: 학적을 졸업으로 바꾸려 할 때 동아리장인지 화면에서 미리 보여주기 위해서다.
+
+### `PATCH /api/admin/users/{user_id}` — `관리자`
+
+```jsonc
+// 전부 optional. 보낸 것만 바뀐다
+{ "name": "이우진", "dept": "컴퓨터공학과", "birth": "2005-03-11", "gender": "남",
+  "email": "24010001@on.mjc.ac.kr", "academic_status": "졸업",
+  "email_verified": true, "is_admin": false }
+```
+
+기획서 §4.3이 잠긴 필드에 대해 "변경이 필요하면 관리자 문의"라고 안내하므로, **관리자는 이름·생년월일·성별·이메일까지 고칠 수 있다.** 학번(`id`)만은 PK라 바꿀 수 없다.
+
+`200` → 위 `GET`의 항목과 같은 형태
+
+| 에러 | code | 설명 |
+|---|---|---|
+| 400 | `INVALID_EMAIL_DOMAIN` · `EMAIL_ID_MISMATCH` | 가입과 같은 규칙 |
+| 400 | `INVALID_INPUT` | 학적·성별 값이 열거값이 아님 |
+| 409 | `DUPLICATE_EMAIL` | 다른 사람이 쓰는 이메일 |
+| 409 | `LEADER_CANNOT_GRADUATE` | 동아리장인 동아리가 있으면 졸업 불가. 관리자도 같다 — 먼저 위임하거나 강제 교체한다 |
+| 409 | `LAST_ADMIN` | 마지막 관리자의 권한은 뺏을 수 없다. 자기 자신도 마찬가지 |
+
+**유저 삭제는 없다.** 활동 글·멤버십·신청 이력이 딸려 있어 되돌릴 수 없다. 필요하면 DB에서 직접 처리한다.
+
 ---
 
 ## 6. 활동 글 (T5 · cw)
@@ -622,6 +664,7 @@ gender           남 | 여
 |---|---|
 | 페이지네이션 표준(`page`/`size`) | 타임라인만 `offset`/`limit`. 나머지는 전량 반환 — 데이터가 수십 건 규모다 |
 | ETag·캐시 헤더 | 없음 |
-| 관리자 유저·게시글 목록 API | seed 관리자 + DB 직접 조작 (구현계획 T4 컷라인 C) |
+| 관리자 **게시글** 목록 API | 동아리장이 자기 동아리 글을 관리한다. 전체 관리가 필요하면 DB 직접 |
+| 유저 **삭제** | 활동 이력이 딸려 있어 되돌릴 수 없다. DB 직접 (§5 유저 관리 참고) |
 | 알림 API | 이메일 + `/api/me/requests` |
 | 파일 삭제 API | 업로드된 고아 파일은 그대로 둔다 |
