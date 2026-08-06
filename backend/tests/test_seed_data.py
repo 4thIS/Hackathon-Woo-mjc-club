@@ -31,8 +31,16 @@ def test_only_demo_led_clubs_are_recruiting():
         assert recruiting == (c["name"] in DEMO_LED), c["name"]
 
 
-def test_posts_only_attach_to_demo_led_clubs():
-    assert {p[0] for p in POSTS} <= set(DEMO_LED)
+def test_every_club_has_at_least_three_posts():
+    """동아리를 눌렀는데 활동이 비어 있으면 시연에서 허전하다.
+    (예전에는 데모 6곳에만 글을 붙였다 — 지금은 전 동아리에 최소 3건씩 둔다)"""
+    from collections import Counter
+
+    per_club = Counter(p[0] for p in POSTS)
+    names = {c["name"] for c in CLUBS}
+    assert set(per_club) <= names, f"목록에 없는 동아리에 글이 붙었다: {set(per_club) - names}"
+    부족 = {n: per_club.get(n, 0) for n in names if per_club.get(n, 0) < 3}
+    assert not 부족, f"활동 글이 3건 미만인 동아리: {부족}"
 
 
 def test_enough_clubs_have_public_posts_for_the_carousel():

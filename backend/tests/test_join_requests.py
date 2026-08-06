@@ -179,3 +179,29 @@ def test_cancel_join_request_forbidden_for_others(client, make_user, make_club, 
 
     r2 = client.delete(f"/api/join-requests/{req_id}", cookies=auth_cookie(other))
     assert r2.status_code == 403
+
+
+def test_processed_requests_leave_the_leader_list(client, make_user, make_club, join_club, auth_cookie):
+    """승인·거절한 신청은 동아리장 목록에서 빠진다 — 이 화면은 '할 일 목록'이다."""
+    leader = make_user(verified=True)
+    club = make_club()
+    join_club(leader, club, role="동아리장")
+
+    ids = []
+    for _ in range(3):
+        applicant = make_user(verified=True)
+        r = client.post(f"/api/clubs/{club.id}/join-requests", json={"answers": {}},
+                        cookies=auth_cookie(applicant))
+        assert r.status_code == 201
+        ids.append(r.json()["id"])
+
+    lead = auth_cookie(leader)
+    assert len(client.get(f"/api/clubs/{club.id}/join-requests", cookies=lead).json()) == 3
+
+    assert client.post(f"/api/join-requests/{ids[0]}/approve", cookies=lead).status_code == 200
+    assert client.post(f"/api/join-requests/{ids[1]}/reject", json={"reason": "정원 초과"},
+                       cookies=lead).status_code == 200
+
+    left = client.get(f"/api/clubs/{club.id}/join-requests", cookies=lead).json()
+    assert [r["id"] for r in left] == [ids[2]]
+    assert all(r["status"] == "심사중" for r in left)

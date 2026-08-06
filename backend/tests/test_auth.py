@@ -12,7 +12,7 @@ from sqlalchemy import select
 from app import enums
 from app.db import SessionLocal
 from app.main import app
-from app.models import Club, ClubMember, EmailToken, User
+from app.models import Club, ClubMember, EmailToken, JoinRequest, User
 
 
 @pytest.fixture(scope="module")
@@ -268,3 +268,34 @@ def test_grade_is_editable_and_clearable(client, account):
     r = client.patch("/api/me", json={"grade": 9})
     assert r.status_code == 400
     client.post("/api/auth/logout")
+
+
+def test_my_requests_drops_finished_items(client, account, club):
+    """다 끝난 신청이 쌓이면 지금 뭘 기다리는지 흐려진다. 진행중과 거절만 남는다."""
+    client.post("/api/auth/signup", json=account)
+    client.post("/api/auth/login", json={"email": account["email"], "password": "test1234"})
+    token = token_of(account["student_id"])
+    client.get("/api/auth/verify", params={"token": token}, follow_redirects=False)
+
+    # 기본은 모집마감이다 — 신청을 받으려면 열어 둔다
+    with SessionLocal() as db:
+        row = db.get(Club, club)
+        row.recruit_status = enums.RECRUIT_MOJIP
+        db.commit()
+
+    r = client.post(f"/api/clubs/{club}/join-requests", json={"answers": {}})
+    assert r.status_code == 201
+    req_id = r.json()["id"]
+
+    assert len(client.get("/api/me/requests").json()["join"]) == 1
+
+    # 본인이 취소하면 목록에서 빠진다
+    assert client.delete(f"/api/join-requests/{req_id}").status_code in (200, 204)
+    assert client.get("/api/me/requests").json()["join"] == []
+
+    client.post("/api/auth/logout")
+
+    # account·club fixture 는 신청 기록을 지우지 않는다 — 여기서 치운다
+    with SessionLocal() as db:
+        db.query(JoinRequest).filter(JoinRequest.id == req_id).delete()
+        db.commit()

@@ -4,7 +4,7 @@
  * 권한은 원래 있었다 — deps.club_leader 가 관리자를 통과시킨다.
  * 없던 건 진입로다. 공개 목록이 활동중만 주기 때문에 보관된 동아리에 도달할 수 없었다.
  */
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import api from '../api'
 import { CATEGORY_NAMES as CATEGORIES } from './ClubCategory'
 
@@ -71,6 +71,37 @@ async function saveEdit() {
     editError.value = e.message
   } finally {
     saving.value = false
+  }
+}
+
+/* 삭제는 되돌릴 수 없다. 보통은 '보관'으로 충분하므로, 지우려면 이름을 직접 치게 한다 */
+const delDlg = ref(null)
+const deleting = ref(null)      // 대상 동아리
+const delTyped = ref('')
+const delBusy = ref(false)
+const delError = ref('')
+const delReady = computed(() => delTyped.value.trim() === (deleting.value?.name ?? ''))
+
+function openDelete(club) {
+  deleting.value = club
+  delTyped.value = ''
+  delError.value = ''
+  delDlg.value?.showModal()
+}
+
+async function confirmDelete() {
+  if (!delReady.value || delBusy.value) return
+  delBusy.value = true
+  delError.value = ''
+  try {
+    await api.admin.deleteClub(deleting.value.id)
+    delDlg.value?.close()
+    flash(`${deleting.value.name} 을 삭제했습니다. 활동 기록도 함께 지워졌습니다.`)
+    await load()
+  } catch (e) {
+    delError.value = e.message
+  } finally {
+    delBusy.value = false
   }
 }
 
@@ -188,6 +219,7 @@ async function transfer() {
                   @click="toggleArchive(c)">
             {{ c.status === '보관' ? '복구' : '보관' }}
           </button>
+          <button class="btn ghost sm del" @click="openDelete(c)">삭제</button>
         </div>
       </li>
     </ul>
@@ -252,6 +284,35 @@ async function transfer() {
     </dialog>
 
     <!-- 동아리장 강제 교체 -->
+    <!-- 삭제 확인 — 이름을 직접 쳐야 지워진다 -->
+    <dialog ref="delDlg" class="narrow" @click.self="delDlg.close()">
+      <div class="sheet-hd">
+        <h2>동아리를 삭제할까요?</h2>
+        <p>되돌릴 수 없습니다.</p>
+      </div>
+      <div class="sheet-bd">
+        <p class="warn">
+          <b>{{ deleting?.name }}</b> 와 함께 <b>활동 기록 {{ deleting?.post_count ?? 0 }}건</b>,
+          부원 {{ deleting?.member_count ?? 0 }}명의 소속, 가입·탈퇴 신청, 가입폼이 모두 지워집니다.
+        </p>
+        <p class="hint">
+          잘못 만들어진 동아리를 치울 때만 쓰세요. 활동을 잠시 멈추는 것뿐이라면
+          <b>보관</b>이 맞습니다 — 기록이 남고 되돌릴 수 있습니다.
+        </p>
+        <div class="fld">
+          <label for="del-name">확인을 위해 동아리 이름을 입력하세요</label>
+          <input id="del-name" v-model="delTyped" :placeholder="deleting?.name" autocomplete="off">
+        </div>
+        <p v-if="delError" class="warn">{{ delError }}</p>
+      </div>
+      <div class="sheet-ft">
+        <button class="btn ghost" @click="delDlg.close()">취소</button>
+        <button class="btn del-go" :disabled="!delReady || delBusy" @click="confirmDelete">
+          {{ delBusy ? '삭제 중…' : '영구 삭제' }}
+        </button>
+      </div>
+    </dialog>
+
     <dialog ref="dlg" class="narrow" @click.self="dlg.close()">
       <div class="sheet-hd">
         <h2>동아리장 교체</h2>
@@ -315,6 +376,12 @@ async function transfer() {
 .acts { display: flex; gap: 6px; flex-wrap: wrap; }
 .btn.sm { height: 32px; padding: 0 12px; font-size: 12.5px; text-decoration: none; }
 .btn.sm.danger { border-color: var(--warnLine); color: var(--warnInk); }
+
+/* 보관(주황)과 삭제(붉은)를 색으로 가른다 — 하나는 되돌릴 수 있고 하나는 아니다 */
+.btn.sm.del { border-color: var(--dangerLine); color: var(--dangerInk); }
+.btn.sm.del:hover { background: var(--dangerBg); }
+.btn.del-go { background: var(--dangerInk); color: var(--onAccent); border-color: transparent; }
+.btn.del-go:disabled { opacity: .45; }
 
 dialog { max-height: min(86vh, 760px); overflow: auto; box-shadow: 0 26px 70px var(--shadowUp); }
 dialog::backdrop { backdrop-filter: blur(3px); }

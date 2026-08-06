@@ -99,12 +99,33 @@ APPLICANTS = ["2026261240", "2026261241", "2025260242"]
 DEMO_LED = ["고리사진부", "축구부", "노래창고", "희비", "T.M.I.M", "e-sports"]
 
 CLUBS_JSON = Path(__file__).parent / "data" / "clubs.json"
+POSTS_JSON = Path(__file__).parent / "data" / "seed_posts.json"
+CREDITS_JSON = Path(__file__).parent / "data" / "photo_credits.json"
+
+
+def load_photos() -> dict[str, list[str]]:
+    """collect_photos.py 가 받아 둔 사진을 동아리별로 묶는다.
+
+    전부 CC0·퍼블릭도메인이고 출처는 photo_credits.json 에 남아 있다.
+    파일이 없으면 사진 없이 시드한다 — 사진 때문에 시드가 실패하면 안 된다.
+    """
+    if not CREDITS_JSON.exists():
+        return {}
+    raw = json.loads(CREDITS_JSON.read_text(encoding="utf-8"))
+    out: dict[str, list[str]] = {}
+    for it in raw.get("items", []):
+        out.setdefault(it["club"], []).append(f"/uploads/{it['file']}")
+    return out
+
+
+PHOTOS = load_photos()
 
 
 def load_clubs() -> list[dict]:
     """crawl_clubs.py 가 만든 JSON 을 Club 생성 인자로 바꾼다.
 
-    지도교수·정기모임·대표 이미지·현재 기수는 원본에 없다. 비워 둔다.
+    지도교수·정기모임·현재 기수는 원본에 없다. 비워 둔다.
+    대표 이미지는 collect_photos.py 가 받아 둔 첫 장을 쓴다.
     """
     raw = json.loads(CLUBS_JSON.read_text(encoding="utf-8"))
     out = []
@@ -120,6 +141,7 @@ def load_clubs() -> list[dict]:
                 founded_year=c["founded_year"],
                 purpose=purpose,
                 advisor="",
+                image=(PHOTOS.get(c["name"]) or [None])[0],
                 recruit_status=enums.RECRUIT_MOJIP if demo else enums.RECRUIT_CLOSED,
                 current_gen=1 if demo else None,
             )
@@ -129,55 +151,18 @@ def load_clubs() -> list[dict]:
 
 CLUBS = load_clubs()
 
-# (동아리 이름, 며칠 전, 제목, 본문, 태그, 공개)
+# 활동 글 — data/seed_posts.json 이 원본이다.
 # ★ 활동 글은 데모용 창작이다. 동아리 정보(이름·분야·창립년도·목적)만 학교 공개 자료다.
-POSTS = [
-    ("고리사진부", 24, "성북동 출사, 필름 두 롤",
-     "10월 12일 성북동 일대에서 출사를 진행했습니다. 12명이 참여했고 각자 준비한 필름 카메라로 "
-     "골목과 담장을 담았습니다.\n현상은 다음 주 정기 모임에서 함께 합니다.",
-     ["출사", "필름"], True),
-    ("고리사진부", 61, "암실 워크숍 — 직접 인화해보기",
-     "학교 암실을 빌려 흑백 인화 실습을 했습니다. 처음 해본 부원이 절반이었지만 전원이 한 장씩 완성했습니다.",
-     ["워크숍", "암실"], True),
-    ("고리사진부", 5, "학기말 전시 준비 회의",
-     "전시 공간과 출품작 선정 기준을 정했습니다. 아직 외부 공개 전입니다.",
-     ["전시"], False),
+def load_posts() -> list[tuple]:
+    raw = json.loads(POSTS_JSON.read_text(encoding="utf-8"))
+    out = []
+    for club_name, rows in raw["posts"].items():
+        for days_ago, title, body, tags, is_public in rows:
+            out.append((club_name, days_ago, title, body, tags, is_public))
+    return out
 
-    ("축구부", 8, "주말 리그 3차전 승리",
-     "3대 1로 이겼습니다. 후반 교체 투입된 신입 2명이 각각 한 골씩 넣었습니다.",
-     ["리그", "경기"], True),
-    ("축구부", 34, "우천으로 순연된 2차전",
-     "비로 경기가 밀려 다음 주 같은 시간에 다시 치릅니다. 훈련은 실내 체육관에서 이어갑니다.",
-     ["리그"], True),
 
-    ("노래창고", 18, "가을 정기발표회 <목소리로 짓는 집>",
-     "소극장에서 정기발표회를 열었습니다. 6곡을 준비했고 객석 90석이 찼습니다.",
-     ["공연", "정기발표회"], True),
-    ("노래창고", 55, "신입 오디션 결과 발표",
-     "지원 21명 중 6명이 합격했습니다. 파트별로 베이스 2 · 테너 2 · 소프라노 2 입니다.",
-     ["모집", "오디션"], True),
-
-    ("희비", 22, "정기공연 <두 번째 문> 무대 철수",
-     "3회 공연을 마치고 무대를 정리했습니다. 누적 관객은 210명입니다.",
-     ["공연"], True),
-    ("희비", 58, "신작 대본 리딩 1회차",
-     "다음 정기공연 대본 초고를 함께 읽었습니다. 배역은 다음 주에 정합니다.",
-     ["연습"], True),
-
-    ("T.M.I.M", 15, "아동센터 멘토링 8주차",
-     "초등 4~6학년 14명과 수학 학습을 진행했습니다. 이번 주로 1학기 일정이 끝났습니다.",
-     ["멘토링", "봉사"], True),
-    ("T.M.I.M", 47, "연탄 나눔 봉사 300장",
-     "지역 복지관과 함께 연탄 300장을 배달했습니다. 11명이 참여했습니다.",
-     ["봉사", "나눔"], True),
-
-    ("e-sports", 12, "교내 대회 예선 운영",
-     "1학년 32명이 참가했습니다. 종목은 2개, 조별 예선 후 상위 8명이 본선에 올라갑니다.",
-     ["대회", "운영"], True),
-    ("e-sports", 6, "본선 진출자 확정",
-     "예선 이틀 일정을 마치고 본선 진출 8명이 확정됐습니다. 본선은 다음 달에 열립니다.",
-     ["대회"], True),
-]
+POSTS = load_posts()
 
 # 가입폼이 있는 동아리 — 신청 모달에 폼이 렌더되는 걸 시연에서 보여준다 (기획서 §5.3)
 JOIN_FORM_FIELDS = [
@@ -217,15 +202,18 @@ def main() -> None:
         db.flush()
         by_name = {c.name: c for c in clubs}
 
-        # 동아리장은 데모 운영 동아리 6곳에만 배정한다.
-        # 나머지 19곳은 leader 가 없다 — 학교가 등록한 목록은 있지만
-        # 운영 주체가 아직 이 서비스에 들어오지 않은 상태다 (설계 §3.2)
+        # 모든 동아리에 동아리장을 둔다 — 활동 기록이 붙으려면 쓴 사람이 있어야 한다.
+        # 다만 '모집중' 은 데모 여섯 곳뿐이다(load_clubs). 활동은 쌓였지만 지금은
+        # 모집을 닫아 둔 동아리가 대부분인, 실제에 가까운 모습이다.
+        ordered = DEMO_LED + [c.name for c in clubs if c.name not in DEMO_LED]
         leader_of = {}
-        for i, name in enumerate(DEMO_LED):
+        for i, name in enumerate(ordered):
             club = by_name[name]
             leader_of[name] = LEADER_IDS[i % 3]
             db.add(ClubMember(user_id=leader_of[name], club_id=club.id,
                               role=enums.ROLE_LEADER, gen=1))
+            if name not in DEMO_LED:
+                continue
             db.add(ClubMember(user_id=OB_ID, club_id=club.id, role=enums.ROLE_MEMBER,
                               membership=enums.MEMBERSHIP_OB, gen=1))
             # 학생 데모 계정은 두 곳에만 넣는다 —
@@ -240,15 +228,22 @@ def main() -> None:
 
         today = date.today()
         posts = []
+        used_photo = {}          # 동아리별로 사진을 돌려 쓴다 (대표 0번은 빼고)
         for club_name, days_ago, title, body, tags, is_public in POSTS:
             club = by_name[club_name]
+            pool = PHOTOS.get(club_name, [])[1:]
+            shot = []
+            if pool:
+                k = used_photo.get(club_name, 0)
+                shot = [pool[k % len(pool)]]
+                used_photo[club_name] = k + 1
             posts.append(Post(
                 club_id=club.id,
                 # flush 직후 club.members 는 아직 안 채워질 수 있다. 위에서 모은 dict 를 쓴다
                 author_id=leader_of[club_name],
                 title=title,
                 body=body,
-                photos=[],
+                photos=shot,
                 activity_date=today - timedelta(days=days_ago),
                 tags=tags,
                 is_public=is_public,

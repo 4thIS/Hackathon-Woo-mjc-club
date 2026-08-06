@@ -130,6 +130,7 @@ export const api = {
     approve: (id) => post(`/admin/club-applications/${id}/approve`),
     reject: (id, reason) => post(`/admin/club-applications/${id}/reject`, { reason }),
     updateClub: (id, payload) => patch(`/admin/clubs/${id}`, payload),
+    deleteClub: (id) => del(`/admin/clubs/${id}`),
     users: (params) => get('/admin/users' + qs(params)),
     updateUser: (id, payload) => patch(`/admin/users/${id}`, payload),
     clubs: (params) => get('/admin/clubs' + qs(params)),

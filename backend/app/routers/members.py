@@ -1,9 +1,10 @@
 """가입·탈퇴·부원 — 명세: docs/api.md §4"""
 
+import re
 from datetime import timedelta
 
 from fastapi import APIRouter, Depends, Response
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -29,11 +30,23 @@ def _iso(dt) -> str:
 # --- 가입폼 -------------------------------------------------------------
 
 
+# 저장 이름은 답변을 담는 JSON 의 키다. 화면에 보이는 글은 label 이 맡는다.
+# 한글·공백이 섞이면 주소·스크립트에서 다루기 번거롭고, 답변을 내보낼 때도 깨지기 쉽다.
+KEY_RE = re.compile(r"^[a-zA-Z][a-zA-Z0-9_]{0,29}$")
+
+
 class JoinFormField(BaseModel):
     key: str
     label: str
     type: str
     required: bool = False
+
+    @field_validator("key")
+    @classmethod
+    def _check_key(cls, v: str) -> str:
+        if not KEY_RE.fullmatch(v.strip()):
+            raise ValueError("저장 이름은 영문으로 시작하는 영문·숫자·밑줄 30자 이내입니다.")
+        return v.strip()
 
 
 class JoinFormIn(BaseModel):
@@ -126,8 +139,13 @@ def create_join_request(
 @router.get("/clubs/{club_id}/join-requests")
 def list_join_requests(m: ClubMember = Depends(club_leader), db: Session = Depends(get_db)):
     # ★ 이름·학과·학년만. 학번 전체·성별·생년월일은 응답에 넣지 않는다 (기획서 §5.3·§9)
+    #
+    # 심사중인 것만 준다. 처리한 신청이 계속 남아 있으면 동아리장은 매번 어느 것이
+    # 안 끝났는지 다시 찾아야 한다 — 이 화면은 '할 일 목록'이다.
     reqs = db.scalars(
-        select(JoinRequest).where(JoinRequest.club_id == m.club_id).order_by(JoinRequest.created_at)
+        select(JoinRequest)
+        .where(JoinRequest.club_id == m.club_id, JoinRequest.status == enums.REQ_PENDING)
+        .order_by(JoinRequest.created_at)
     ).all()
     return [
         {
@@ -264,8 +282,11 @@ def create_leave_request(m: ClubMember = Depends(club_member), db: Session = Dep
 def list_leave_requests(m: ClubMember = Depends(club_leader), db: Session = Depends(get_db)):
     # ★ 조회 시점에 7일 지난 건을 먼저 자동 승인 처리한다. 스케줄러 없음 (구현계획 §2)
     _auto_approve_expired_leaves(db, m.club_id)
+    # 가입 신청과 같다 — 처리한 것은 목록에서 빠진다
     reqs = db.scalars(
-        select(LeaveRequest).where(LeaveRequest.club_id == m.club_id).order_by(LeaveRequest.created_at)
+        select(LeaveRequest)
+        .where(LeaveRequest.club_id == m.club_id, LeaveRequest.status == enums.REQ_PENDING)
+        .order_by(LeaveRequest.created_at)
     ).all()
     return [
         {

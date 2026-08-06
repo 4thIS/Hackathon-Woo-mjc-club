@@ -136,6 +136,10 @@ watch(() => auth.isLoggedIn, load)
         <div class="side">
           <div class="acts">
             <!-- 동아리장에게만 보이는 진입점. 없으면 글 작성 화면에 주소를 직접 쳐야 들어간다 -->
+            <!-- 동아리장이 신청자를 처리하러 내 정보까지 돌아가지 않도록 여기에도 둔다 -->
+            <RouterLink v-if="isLeader" class="btn ghost write" :to="`/clubs/${club.id}/manage`">
+              동아리 관리
+            </RouterLink>
             <RouterLink v-if="isLeader" class="btn ghost write" :to="`/clubs/${club.id}/posts/new`">
               활동 글 쓰기
             </RouterLink>

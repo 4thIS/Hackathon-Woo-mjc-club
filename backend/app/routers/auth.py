@@ -349,16 +349,28 @@ def my_clubs(user: User = Depends(current_user), db: Session = Depends(get_db)):
 
 @router.get("/me/requests")
 def my_requests(user: User = Depends(current_user), db: Session = Depends(get_db)):
+    """진행중인 것과 **거절**만 준다.
+
+    승인·취소된 건은 뺀다 — 승인 결과는 '내 동아리' 목록이 보여주고, 취소는 본인이 한
+    일이라 다시 알릴 이유가 없다. 다 끝난 항목이 쌓이면 지금 뭘 기다리는 중인지 흐려진다.
+    거절만 남기는 것은 사유를 확인해야 하기 때문이다.
+    """
+    SHOWN = (enums.REQ_PENDING, enums.REQ_REJECTED)
+
     joins = db.scalars(
-        select(JoinRequest).where(JoinRequest.user_id == user.id).order_by(JoinRequest.id.desc())
+        select(JoinRequest)
+        .where(JoinRequest.user_id == user.id, JoinRequest.status.in_(SHOWN))
+        .order_by(JoinRequest.id.desc())
     ).all()
     creates = db.scalars(
         select(ClubApplication)
-        .where(ClubApplication.applicant_id == user.id)
+        .where(ClubApplication.applicant_id == user.id, ClubApplication.status.in_(SHOWN))
         .order_by(ClubApplication.id.desc())
     ).all()
     leaves = db.scalars(
-        select(LeaveRequest).where(LeaveRequest.user_id == user.id).order_by(LeaveRequest.id.desc())
+        select(LeaveRequest)
+        .where(LeaveRequest.user_id == user.id, LeaveRequest.status.in_(SHOWN))
+        .order_by(LeaveRequest.id.desc())
     ).all()
 
     return {

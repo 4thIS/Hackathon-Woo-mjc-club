@@ -1,5 +1,7 @@
 """T4 — 동아리 개설·관리자. 명세: docs/api.md §5"""
 
+from datetime import date
+
 from app import enums
 from app.models import Club, ClubApplication, ClubMember
 
@@ -148,3 +150,46 @@ def test_admin_can_force_transfer_leader(client, make_user, make_club, join_club
     old_leader = db.get(ClubMember, {"user_id": leader.id, "club_id": club.id})
     assert new_leader.role == "동아리장"
     assert old_leader.role == "부원"
+
+
+# ── 동아리 삭제 ────────────────────────────────────────────
+
+
+def test_delete_club_removes_everything_but_the_application_history(
+    client, make_user, make_club, join_club, auth_cookie
+):
+    """되돌릴 수 없는 동작이라 무엇이 지워지고 무엇이 남는지 고정한다."""
+    from app.db import SessionLocal
+    from app.models import Club, ClubMember, JoinForm, Post
+
+    admin = make_user(admin=True)
+    leader = make_user(verified=True)
+    club = make_club()
+    join_club(leader, club, role="동아리장")
+
+    with SessionLocal() as db:
+        db.add(Post(club_id=club.id, author_id=leader.id, title="글", body="본문",
+                    photos=[], activity_date=date.today(), tags=[], is_public=True))
+        db.add(JoinForm(club_id=club.id, fields=[], required=False))
+        db.commit()
+
+    r = client.delete(f"/api/admin/clubs/{club.id}", cookies=auth_cookie(admin))
+    assert r.status_code == 204
+
+    with SessionLocal() as db:
+        assert db.get(Club, club.id) is None
+        assert db.query(ClubMember).filter(ClubMember.club_id == club.id).count() == 0
+        assert db.query(Post).filter(Post.club_id == club.id).count() == 0
+        assert db.get(JoinForm, club.id) is None
+
+
+def test_delete_club_requires_admin(client, make_user, make_club, auth_cookie):
+    user = make_user(verified=True)
+    club = make_club()
+    assert client.delete(f"/api/admin/clubs/{club.id}", cookies=auth_cookie(user)).status_code == 403
+
+
+def test_delete_missing_club_is_404(client, make_user, auth_cookie):
+    admin = make_user(admin=True)
+    r = client.delete("/api/admin/clubs/999999", cookies=auth_cookie(admin))
+    assert r.status_code == 404
