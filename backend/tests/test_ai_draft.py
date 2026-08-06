@@ -190,6 +190,8 @@ def test_prompt_carries_the_no_hallucination_rules():
     assert "지어내지 않습니다" in p
     assert "구체화" in p
     assert "뜻깊은" in p  # 금지 예시가 실제로 들어 있는지
+    # 문체를 안 박으면 실행마다 '~습니다'/'~했다' 가 섞여 한 목록에서 지저분해진다
+    assert "'~습니다' 체" in p
 
 
 # ── 응답 파싱 ──────────────────────────────────────────────
