@@ -1,4 +1,4 @@
-"""T1 — 인증·계정 (담당 wj). 명세: docs/api.md §2
+"""인증·계정 — 명세: docs/api.md §2
 
 라우트 선언은 계약이다. 함수 본문만 채우면 된다.
 """
@@ -387,7 +387,7 @@ def my_requests(user: User = Depends(current_user), db: Session = Depends(get_db
                 "club_name": r.club.name,
                 "status": r.status,
                 "created_at": iso(r.created_at),
-                # 실제 자동 승인은 T4(탈퇴 요청 목록)가 조회 시점에 처리한다 (구현계획 §2)
+                # 실제 자동 승인은 탈퇴 요청 목록이 조회 시점에 처리한다
                 "auto_approve_at": iso(r.created_at + timedelta(days=LEAVE_AUTO_DAYS)),
                 "cancellable": r.status == enums.REQ_PENDING,
             }
@@ -495,5 +495,5 @@ def withdraw(body: WithdrawIn, user: User = Depends(current_user), db: Session =
 
 
 def current_ai_key(user: User) -> str | None:
-    """T6 에서 쓴다. 저장된 키를 복호화해 돌려준다 — 응답에는 절대 싣지 않는다."""
+    """AI 초안이 쓴다. 저장된 키를 복호화해 돌려준다 — 응답에는 절대 싣지 않는다."""
     return decrypt_ai_key(user.ai_key_enc) if user.ai_key_enc else None

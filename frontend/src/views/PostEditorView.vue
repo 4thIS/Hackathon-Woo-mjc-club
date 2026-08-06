@@ -1,5 +1,5 @@
 <script setup>
-/* T5 · 담당 cw — 활동 글 작성/수정
+/* 활동 글 작성/수정
  *
  * 한 컴포넌트가 두 라우트를 처리한다 (router/index.js — 수정하지 않는다):
  *   /clubs/:id/posts/new  name: post-new   → props.id = club id
@@ -9,7 +9,7 @@
  * 기획: 기획서 §6 (공개 기본값 비공개 — 활동 사진에 학생 얼굴이 들어간다)
  * 디자인: 프론트엔드 디자인 기획 §6 남은 페이지 제작 규칙 (목업 없음)
  *
- * ★ 'AI 초안' 자리는 PostEditorAiPanel.vue 에 레이아웃만 만들어 뒀다. T6(wj)이 거기에 꽂는다.
+ * 'AI 초안' 자리는 PostEditorAiPanel.vue 가 맡는다.
  */
 import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -248,7 +248,7 @@ async function confirmRemove() {
   }
 }
 
-/* T6(wj)이 PostEditorAiPanel 에서 emit 할 자리. 지금은 호출되지 않는다. */
+/* PostEditorAiPanel 이 초안을 넘겨주는 자리. */
 function applyDraft(draft) {
   if (!draft) return
   if (draft.title) form.title = draft.title
@@ -280,7 +280,7 @@ function applyDraft(draft) {
         <p class="sub">{{ subheading }}</p>
       </header>
 
-      <!-- ★ AI 초안 자리 — 레이아웃만 완성돼 있다. T6(wj)이 여기에 기능을 꽂는다. -->
+      <!-- AI 초안 -->
       <PostEditorAiPanel :club-id="clubId" :has-key="auth.hasAiKey" @draft="applyDraft" />
 
       <form class="form card" novalidate @submit.prevent="save">

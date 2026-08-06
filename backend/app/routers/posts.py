@@ -1,4 +1,4 @@
-"""T5 — 활동 글 (담당 cw). 명세: docs/api.md §3(읽기) · §6(쓰기)"""
+"""활동 글 — 명세: docs/api.md §3(읽기) · §6(쓰기)"""
 
 from datetime import date
 from pathlib import Path

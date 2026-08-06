@@ -1,5 +1,5 @@
 <script setup>
-/* T1 — 이메일 인증 결과 (담당 wj). 명세: api.md §2
+/* 이메일 인증 결과 — 명세: api.md §2
  *
  * 백엔드가 /api/auth/verify 처리 후 여기로 302 시킨다 → ?status=ok|expired|invalid
  * 성공하면 세션의 email_verified 가 바뀌었으므로 /me 를 다시 읽는다.

@@ -1,4 +1,4 @@
-"""T4 — 동아리 개설·관리자 (담당 th). 명세: docs/api.md §5"""
+"""동아리 개설·관리자 — 명세: docs/api.md §5"""
 
 from datetime import date
 

@@ -62,7 +62,7 @@ function qs(params) {
 export const api = {
   health: () => get('/health'),
 
-  // --- 인증·계정 (T1 · docs/api.md §2) ---
+  // --- 인증·계정 (docs/api.md §2) ---
   auth: {
     signup: (payload) => post('/auth/signup', payload),
     login: (email, password) => post('/auth/login', { email, password }),
@@ -79,7 +79,7 @@ export const api = {
     withdraw: (password) => del('/me', { password }),
   },
 
-  // --- 탐색 (T2 · §3) ---
+  // --- 탐색 (§3) ---
   clubs: {
     list: (params) => get('/clubs' + qs(params)),
     detail: (id) => get(`/clubs/${id}`),
@@ -93,7 +93,7 @@ export const api = {
   },
   stats: () => get('/stats'),
 
-  // --- 가입·탈퇴 (T3 · §4) ---
+  // --- 가입·탈퇴 (§4) ---
   joinForm: {
     get: (clubId) => get(`/clubs/${clubId}/join-form`),
     put: (clubId, payload) => put(`/clubs/${clubId}/join-form`, payload),
@@ -111,7 +111,7 @@ export const api = {
     approve: (id) => post(`/leave-requests/${id}/approve`),
   },
 
-  // --- 개설·관리자 (T4 · §5) ---
+  // --- 개설·관리자 (§5) ---
   clubApplications: {
     create: (payload) => post('/club-applications', payload),
     cancel: (id) => del(`/club-applications/${id}`),
@@ -126,7 +126,7 @@ export const api = {
     clubs: (params) => get('/admin/clubs' + qs(params)),
   },
 
-  // --- 활동 글 (T5 · §6) ---
+  // --- 활동 글 (§6) ---
   posts: {
     highlights: (limit = 12) => get('/posts/highlights' + qs({ limit })),
     detail: (id) => get(`/posts/${id}`),
@@ -141,7 +141,7 @@ export const api = {
     return request('/uploads', { method: 'POST', form })
   },
 
-  // --- AI 초안 (T6 · §7) ---
+  // --- AI 초안 (§7) ---
   aiDraft: ({ club_id, memo, photos = [], pdf }) => {
     const form = new FormData()
     form.append('club_id', String(club_id))

@@ -40,7 +40,7 @@ _CODES = {
 
 
 def todo(task: str) -> ApiError:
-    """T0 뼈대의 미구현 자리. 담당자가 구현하면서 지운다."""
+    """아직 구현하지 않은 자리. 구현하면서 지운다."""
     return ApiError(501, "NOT_IMPLEMENTED", f"{task} 미구현입니다.")
 
 

@@ -1,5 +1,5 @@
 <script setup>
-/* T0 뼈대의 빈 화면 자리. 담당자가 화면을 만들면서 이 컴포넌트를 지운다. */
+/* 아직 만들지 않은 화면의 빈 자리. 화면이 생기면 이 컴포넌트를 지운다. */
 defineProps({
   title: { type: String, required: true },
   task: { type: String, default: '' },

@@ -1,6 +1,6 @@
 <script setup>
-/* T4 · 담당 th. 명세: docs/api.md §5 — 개설 신청 승인/거절(사유 필수) · 보관 전환 · 동아리장 강제 교체
- * 유저 관리 탭은 T4-C 복구분 (wj) — AdminUserPanel.vue
+/* 관리자 — 명세: docs/api.md §5 — 개설 신청 승인/거절(사유 필수) · 보관 전환 · 동아리장 강제 교체
+ * 유저 관리 탭은 AdminUserPanel.vue
  * 게시글 전체 관리는 컷라인 유지 (api.md §10)
  */
 import { onMounted, ref } from 'vue'

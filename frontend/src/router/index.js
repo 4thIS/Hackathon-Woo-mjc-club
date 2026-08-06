@@ -17,7 +17,10 @@ const routes = [
   { path: '/verify', name: 'verify', component: () => import('../views/VerifyView.vue') },
 
   { path: '/me', name: 'me', component: () => import('../views/MyPageView.vue'), meta: { auth: true } },
-  { path: '/clubs/new', name: 'club-apply', component: () => import('../views/ClubApplyView.vue'), meta: { auth: true } },
+
+  // 동아리 개설도 모달이다. 경로는 남겨두고 아카이브에서 모달을 여는 쿼리로 넘긴다
+  { path: '/clubs/new', name: 'club-apply',
+    redirect: (to) => ({ path: '/archive', query: { ...to.query, new: 1 } }) },
 
   { path: '/clubs/:id/manage', name: 'club-manage', component: () => import('../views/ClubManageView.vue'), props: true, meta: { auth: true } },
   { path: '/clubs/:id/posts/new', name: 'post-new', component: () => import('../views/PostEditorView.vue'), props: true, meta: { auth: true } },
