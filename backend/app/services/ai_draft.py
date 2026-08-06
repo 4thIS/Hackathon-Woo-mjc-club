@@ -9,7 +9,20 @@ Base URL·인증 방식은 기획서 §7.0. 키는 **사용자 개인 키**를 �
   - 메모에 없는 사실을 사진만 보고 쓰지 않는다
 """
 
+import httpx
+
 from ..config import settings
+
+
+def _headers(api_key: str) -> dict[str, str]:
+    """⚠️ User-Agent 를 반드시 넣는다. 기본 UA(python-httpx/…)로 나가면 Cloudflare 가
+    403(error 1010)으로 막는다. 키 오류로 착각하기 딱 좋다 (backend/CLAUDE.md)."""
+    return {
+        "Authorization": f"Bearer {api_key}",
+        "User-Agent": settings.ai_user_agent,
+        "Accept": "application/json",
+    }
+
 
 DEMO_DRAFT = {
     "title": "성북동에서 필름 두 롤을 태우다",
@@ -48,6 +61,17 @@ def generate(api_key: str, club_name: str, category: str, memo: str | None, pdf_
 
 
 def verify_key(api_key: str) -> bool:
-    """저장 전 키 유효성 확인 — 모델 목록 조회 (기획서 §4.5)."""
-    # TODO(wj): GET {settings.ai_base_url}/models/ 로 200 확인 (UA 헤더 필수)
-    raise NotImplementedError("T6 — AI 키 검증 미구현")
+    """저장 전 키 유효성 확인 — 모델 목록 조회 (기획서 §4.5).
+
+    False = 키가 거부됨(401/403). 게이트웨이 자체가 죽었으면 예외를 올린다 —
+    라우터가 400 INVALID_AI_KEY 와 502 AI_GATEWAY_ERROR 를 구분해야 하기 때문이다.
+    """
+    r = httpx.get(
+        f"{settings.ai_base_url}/models/",
+        headers=_headers(api_key),
+        timeout=15,
+    )
+    if r.status_code in (401, 403):
+        return False
+    r.raise_for_status()  # 그 밖의 실패는 게이트웨이 문제 → 라우터가 502 로 바꾼다
+    return True
