@@ -177,7 +177,9 @@ class Post(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     club_id: Mapped[int] = mapped_column(ForeignKey("clubs.id"), index=True)
-    author_id: Mapped[str] = mapped_column(ForeignKey("users.id"))
+    # 작성자가 탈퇴해도 활동 기록은 동아리에 남는다 — 개인 소유가 아니다.
+    # 탈퇴 시 여기만 비우고 화면에는 '탈퇴한 회원' 으로 표시한다 (api.md §2 DELETE /me).
+    author_id: Mapped[str | None] = mapped_column(ForeignKey("users.id"), nullable=True)
 
     title: Mapped[str] = mapped_column(String(200))
     body: Mapped[str] = mapped_column(Text, default="")  # 평문. 마크다운 아님 (api.md §9-3)

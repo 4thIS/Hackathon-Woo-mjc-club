@@ -9,14 +9,24 @@ from datetime import UTC, date, datetime, timedelta
 from fastapi import APIRouter, Depends, Response
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from .. import enums, errors, serializers
 from ..config import settings
 from ..db import get_db
 from ..deps import current_user, verified_user
-from ..models import Club, ClubApplication, ClubMember, EmailToken, JoinRequest, LeaveRequest, User
+from ..models import (
+    Club,
+    ClubApplication,
+    ClubMember,
+    EmailToken,
+    JoinRequest,
+    LeaveRequest,
+    Like,
+    Post,
+    User,
+)
 from ..security import (
     SESSION_COOKIE,
     decrypt_ai_key,
@@ -419,6 +429,68 @@ def delete_ai_key(user: User = Depends(verified_user), db: Session = Depends(get
     user.ai_key_tail = None
     db.commit()
     return Response(status_code=204)
+
+
+# ── 회원 탈퇴 ──────────────────────────────────────────────
+
+
+class WithdrawIn(BaseModel):
+    password: str
+
+
+@router.delete("/me", status_code=204)
+def withdraw(body: WithdrawIn, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    """계정을 지운다. **활동 글은 남긴다** — 기록은 동아리의 자산이다 (api.md §2).
+
+    되돌릴 수 없으므로 비밀번호를 다시 확인한다.
+    """
+    if not verify_password(body.password, user.pw_hash):
+        raise errors.ApiError(403, "INVALID_PASSWORD", "비밀번호가 올바르지 않습니다.")
+
+    # 동아리장이 사라지면 그 동아리가 마비된다. 졸업과 같은 불변식이다 (기획서 §4.3, §5.5)
+    led = db.scalars(
+        select(Club)
+        .join(ClubMember, ClubMember.club_id == Club.id)
+        .where(ClubMember.user_id == user.id, ClubMember.role == enums.ROLE_LEADER)
+    ).all()
+    if led:
+        names = " · ".join(c.name for c in led)
+        raise errors.ApiError(
+            409,
+            "LEADER_CANNOT_LEAVE",
+            f"{names} 의 동아리장입니다. 먼저 동아리장을 위임해주세요.",
+        )
+
+    if user.is_admin:
+        others = db.scalar(
+            select(func.count()).select_from(User)
+            .where(User.is_admin.is_(True), User.id != user.id)
+        )
+        if not others:
+            raise errors.ApiError(
+                409, "LAST_ADMIN", "마지막 관리자입니다. 다른 관리자를 먼저 지정해주세요."
+            )
+
+    # 활동 글은 남기고 작성자만 비운다 (모델 주석 참고)
+    for post in db.scalars(select(Post).where(Post.author_id == user.id)):
+        post.author_id = None
+
+    for model, cond in (
+        (Like, Like.user_id == user.id),
+        (JoinRequest, JoinRequest.user_id == user.id),
+        (LeaveRequest, LeaveRequest.user_id == user.id),
+        (ClubApplication, ClubApplication.applicant_id == user.id),
+        (ClubMember, ClubMember.user_id == user.id),
+        (EmailToken, EmailToken.user_id == user.id),
+    ):
+        db.query(model).filter(cond).delete(synchronize_session=False)
+
+    db.delete(user)
+    db.commit()
+
+    resp = Response(status_code=204)
+    resp.delete_cookie(SESSION_COOKIE, path="/")
+    return resp
 
 
 def current_ai_key(user: User) -> str | None:
