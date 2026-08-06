@@ -50,7 +50,7 @@ const get = (p) => request(p)
 const post = (p, body) => request(p, { method: 'POST', body })
 const patch = (p, body) => request(p, { method: 'PATCH', body })
 const put = (p, body) => request(p, { method: 'PUT', body })
-const del = (p) => request(p, { method: 'DELETE' })
+const del = (p, body) => request(p, { method: 'DELETE', body })   // 탈퇴는 비밀번호를 함께 보낸다
 
 function qs(params) {
   const s = new URLSearchParams(
@@ -76,6 +76,7 @@ export const api = {
     requests: () => get('/me/requests'),
     registerAiKey: (api_key) => post('/me/ai-key', { api_key }),
     deleteAiKey: () => del('/me/ai-key'),
+    withdraw: (password) => del('/me', { password }),
   },
 
   // --- 탐색 (T2 · §3) ---
