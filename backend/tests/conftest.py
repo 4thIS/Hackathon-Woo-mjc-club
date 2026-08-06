@@ -119,7 +119,7 @@ def make_user(db):
             email=f"{uid}@mjc.ac.kr",
             pw_hash=PW,
             name=name,
-            dept="테스트학과",
+            dept="컴퓨터공학과",
             birth=date(2005, 1, 1),
             gender="남",
             academic_status=academic_status,

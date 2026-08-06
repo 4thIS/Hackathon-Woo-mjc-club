@@ -7,7 +7,7 @@ from pydantic import BaseModel
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
-from .. import enums, errors, serializers
+from .. import depts, enums, errors, serializers
 from ..db import get_db
 from ..deps import admin_user, verified_user
 from ..models import Club, ClubApplication, ClubMember, Post, User
@@ -351,6 +351,8 @@ def update_user(
         dept = payload.dept.strip()
         if not dept:
             raise errors.ApiError(400, "INVALID_INPUT", "학과를 입력해주세요.")
+        if not depts.is_valid(dept):
+            raise errors.ApiError(400, "INVALID_DEPT", "학과는 목록에서 골라주세요.")
         user.dept = dept
 
     if payload.birth is not None:

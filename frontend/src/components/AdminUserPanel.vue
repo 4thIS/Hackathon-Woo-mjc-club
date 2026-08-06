@@ -16,6 +16,10 @@ const loading = ref(true)
 const filters = reactive({ q: '', status: '', admin: '' })
 const message = ref('')
 
+/* 학과는 목록에서 고른다 — 관리자도 자유 입력하지 않는다 (서버가 막는다) */
+const deptList = ref([])
+api.depts().then((items) => { deptList.value = items })
+
 const dlg = ref(null)
 const editing = ref(null)      // 원본
 const form = reactive({})      // 수정본
@@ -139,7 +143,9 @@ const leaderOf = (u) => u.clubs.filter((c) => c.role === '동아리장')
           </div>
           <div class="fld">
             <label for="au-dept">학과</label>
-            <input id="au-dept" v-model="form.dept">
+            <select id="au-dept" v-model="form.dept">
+              <option v-for="d in deptList" :key="d" :value="d">{{ d }}</option>
+            </select>
           </div>
         </div>
 

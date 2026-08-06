@@ -34,7 +34,7 @@ def leader(client):
         "password": "test1234",
         "student_id": sid,
         "name": "초안테스터",
-        "dept": "컴퓨터정보과",
+        "dept": "컴퓨터공학과",
         "birth": "2006-01-01",
         "gender": "남",
     }

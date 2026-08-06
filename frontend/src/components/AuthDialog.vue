@@ -16,6 +16,10 @@ const router = useRouter()
 
 const DOMAINS = ['mjc.ac.kr', 'on.mjc.ac.kr']
 
+/* 학과는 학교 홈페이지에서 긁어 둔 목록에서 고른다 (자유 입력 아님) */
+const deptList = ref([])
+api.depts().then((items) => { deptList.value = items })
+
 const dlg = ref(null)
 const tab = ref('login')          // login | signup
 const pending = ref(false)
@@ -207,7 +211,10 @@ async function resend() {
           <div class="two">
             <div class="fld">
               <label for="su-dept">학과<span class="req">*</span></label>
-              <input id="su-dept" v-model="su.dept" placeholder="컴퓨터정보과" required>
+              <select id="su-dept" v-model="su.dept" required>
+                <option value="" disabled>학과를 고르세요</option>
+                <option v-for="d in deptList" :key="d" :value="d">{{ d }}</option>
+              </select>
             </div>
             <div class="fld">
               <label for="su-grade">학년<span class="req">*</span></label>
