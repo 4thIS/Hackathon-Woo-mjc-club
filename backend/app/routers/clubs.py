@@ -1,31 +1,15 @@
-"""T2 — 동아리 탐색 (담당 cw). 명세: docs/api.md §3
-
-T0 시점에 목록·상세·지표는 구현해 둔다. 도커를 띄우면 바로 확인되는 것이 있어야
-나머지 Task가 자기 코드를 의심하지 않는다. 타임라인·인원·캐러셀은 T2에서 채운다.
-"""
+"""T2 — 동아리 탐색 (담당 cw). 명세: docs/api.md §3"""
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from .. import enums, errors
+from .. import enums, serializers
 from ..db import get_db
 from ..deps import current_user_optional, get_club, membership_of
-from ..models import Club, ClubMember, Post, User
+from ..models import Club, ClubMember, JoinForm, Post, User
 
 router = APIRouter(tags=["clubs"])
-
-
-def club_summary(db: Session, club: Club) -> dict:
-    count = db.scalar(select(func.count()).select_from(ClubMember).where(ClubMember.club_id == club.id))
-    return {
-        "id": club.id,
-        "name": club.name,
-        "category": club.category,
-        "recruit_status": club.recruit_status,
-        "image": club.image,
-        "member_count": count or 0,  # 활동중 + OB (api.md §9-1)
-    }
 
 
 @router.get("/clubs")
@@ -43,7 +27,7 @@ def list_clubs(
     if q:
         stmt = stmt.where(Club.name.ilike(f"%{q}%"))
     clubs = db.scalars(stmt.order_by(Club.category, Club.name)).all()
-    items = [club_summary(db, c) for c in clubs]
+    items = [serializers.club_summary(db, c) for c in clubs]
     return {"items": items, "total": len(items)}
 
 
@@ -88,11 +72,9 @@ def club_detail(
         "recruit_status": club.recruit_status,
         "current_gen": club.current_gen,
         "status": club.status,
-        "leader": (
-            {"id": leader.user.id, "name": leader.user.name, "dept": leader.user.dept} if leader else None
-        ),
+        "leader": serializers.user_brief(leader.user) if leader else None,
         "counts": {"active": active, "ob": len(members) - active, "total": len(members)},
-        "has_join_form": False,  # TODO(T3): JoinForm 존재 여부
+        "has_join_form": db.get(JoinForm, club.id) is not None,
         "my": mine,
     }
 
@@ -102,15 +84,79 @@ def club_posts(
     club: Club = Depends(get_club),
     offset: int = 0,
     limit: int = Query(5, le=20),
+    user: User | None = Depends(current_user_optional),
     db: Session = Depends(get_db),
 ):
-    raise errors.todo("동아리 활동 글 타임라인")
+    """타임라인 배치 로드. **오래된 순**으로 준다 (시안: 과거 → 현재)."""
+    see_private = serializers.can_see_private(db, club.id, user)
+
+    base = select(Post).where(Post.club_id == club.id)
+    if not see_private:
+        base = base.where(Post.is_public.is_(True))
+
+    total = db.scalar(select(func.count()).select_from(base.subquery())) or 0
+
+    rows = db.scalars(
+        base.order_by(Post.activity_date.asc(), Post.id.asc()).offset(offset).limit(limit)
+    ).all()
+
+    # 끝 표지("YYYY년부터 N건")에 쓸 가장 오래된 연도 — total 과 같은 필터 기준이어야 한다
+    oldest = db.scalar(base.order_by(Post.activity_date.asc(), Post.id.asc()).limit(1))
+
+    return {
+        "items": [serializers.post_summary(db, p, user) for p in rows],
+        "total": total,
+        "has_more": offset + len(rows) < total,
+        "first_year": oldest.activity_date.year if oldest else None,
+    }
 
 
 @router.get("/clubs/{club_id}/members")
-def club_members(club: Club = Depends(get_club), db: Session = Depends(get_db)):
-    # 비로그인·미인증에는 members 를 빈 배열로 (api.md §3, §9-2)
-    raise errors.todo("동아리 인원 목록")
+def club_members(
+    club: Club = Depends(get_club),
+    user: User | None = Depends(current_user_optional),
+    db: Session = Depends(get_db),
+):
+    """인원 모달 — 기수별 그룹. 최신 기수 → 오래된 기수 → OB 순.
+
+    비로그인·미인증에는 `members` 를 빈 배열로 내리고 인원수만 준다
+    (api.md §9-2 · 기획서 §9 최소 노출).
+    """
+    show_names = user is not None and user.email_verified
+
+    rows = db.scalars(select(ClubMember).where(ClubMember.club_id == club.id)).all()
+
+    active: dict[int | None, list[ClubMember]] = {}
+    ob: list[ClubMember] = []
+    for m in rows:
+        if m.membership == enums.MEMBERSHIP_OB:
+            ob.append(m)
+        else:
+            active.setdefault(m.gen, []).append(m)
+
+    def entry(m: ClubMember) -> dict:
+        return {"id": m.user.id, "name": m.user.name, "dept": m.user.dept, "role": m.role}
+
+    def group(gen: int | None, label: str, members: list[ClubMember]) -> dict:
+        # 동아리장을 맨 앞에, 나머지는 이름순
+        ordered = sorted(members, key=lambda m: (m.role != enums.ROLE_LEADER, m.user.name))
+        return {
+            "gen": gen,
+            "label": label,
+            "count": len(members),
+            "members": [entry(m) for m in ordered] if show_names else [],
+        }
+
+    groups = []
+    # 기수 있는 그룹부터 내림차순, 기수 없는 활동중은 그다음
+    for gen in sorted((g for g in active if g is not None), reverse=True):
+        groups.append(group(gen, f"{gen}기", active[gen]))
+    if None in active:
+        groups.append(group(None, "기수 미지정", active[None]))
+    if ob:
+        groups.append(group(None, "OB", ob))
+
+    return {"total": len(rows), "groups": groups}
 
 
 @router.get("/stats")
