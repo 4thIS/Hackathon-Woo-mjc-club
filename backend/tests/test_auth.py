@@ -9,9 +9,10 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import select
 
+from app import enums
 from app.db import SessionLocal
 from app.main import app
-from app.models import EmailToken, User
+from app.models import Club, ClubMember, EmailToken, User
 
 
 @pytest.fixture(scope="module")
@@ -34,8 +35,30 @@ def account():
         "gender": "남",
     }
     with SessionLocal() as db:
+        db.query(ClubMember).filter(ClubMember.user_id == sid).delete()
         db.query(EmailToken).filter(EmailToken.user_id == sid).delete()
         db.query(User).filter(User.id == sid).delete()
+        db.commit()
+
+
+@pytest.fixture
+def club():
+    """테스트가 쓸 동아리를 직접 만든다.
+
+    seed 데이터에 기대지 않는다 — CI 는 빈 DB 로 돌기 때문이다 (test_smoke.py 주석).
+    """
+    name = f"테스트동아리{uuid.uuid4().hex[:8]}"
+    with SessionLocal() as db:
+        row = Club(name=name, category=enums.CATEGORIES[0], founded_year=2020)
+        db.add(row)
+        db.commit()
+        club_id = row.id
+
+    yield club_id
+
+    with SessionLocal() as db:
+        db.query(ClubMember).filter(ClubMember.club_id == club_id).delete()
+        db.query(Club).filter(Club.id == club_id).delete()
         db.commit()
 
 
@@ -144,51 +167,41 @@ def test_update_me_allows_only_dept_status_password(client, account):
     client.post("/api/auth/logout")
 
 
-def test_graduation_turns_memberships_into_ob(client, account):
-    """졸업하면 모든 소속이 OB 가 된다 (기획서 §3.1)."""
-    from app import enums
-    from app.models import Club, ClubMember
-
-    client.post("/api/auth/signup", json=account)
-    client.post("/api/auth/login", json={"email": account["email"], "password": "test1234"})
-
+def join(student_id: str, club_id: int, role: str) -> None:
     with SessionLocal() as db:
-        club = db.scalar(select(Club))
-        db.add(ClubMember(user_id=account["student_id"], club_id=club.id, role=enums.ROLE_MEMBER))
+        db.add(ClubMember(user_id=student_id, club_id=club_id, role=role))
         db.commit()
 
-    assert client.get("/api/me/clubs").json()[0]["membership"] == "활동중"
+
+def test_graduation_turns_memberships_into_ob(client, account, club):
+    """졸업하면 모든 소속이 OB 가 된다 (기획서 §3.1)."""
+    client.post("/api/auth/signup", json=account)
+    client.post("/api/auth/login", json={"email": account["email"], "password": "test1234"})
+    join(account["student_id"], club, enums.ROLE_MEMBER)
+
+    mine = client.get("/api/me/clubs").json()
+    assert [m["membership"] for m in mine] == ["활동중"]
 
     r = client.patch("/api/me", json={"academic_status": "졸업"})
     assert r.status_code == 200
-    assert client.get("/api/me/clubs").json()[0]["membership"] == "OB"
+    assert [m["membership"] for m in client.get("/api/me/clubs").json()] == ["OB"]
 
-    with SessionLocal() as db:
-        db.query(ClubMember).filter(ClubMember.user_id == account["student_id"]).delete()
-        db.commit()
     client.post("/api/auth/logout")
 
 
-def test_leader_cannot_graduate(client, account):
+def test_leader_cannot_graduate(client, account, club):
     """동아리장이 OB 가 되면 그 동아리가 마비된다 (기획서 §4.3)."""
-    from app import enums
-    from app.models import Club, ClubMember
-
     client.post("/api/auth/signup", json=account)
     client.post("/api/auth/login", json={"email": account["email"], "password": "test1234"})
-
-    with SessionLocal() as db:
-        club = db.scalar(select(Club))
-        db.add(ClubMember(user_id=account["student_id"], club_id=club.id, role=enums.ROLE_LEADER))
-        db.commit()
+    join(account["student_id"], club, enums.ROLE_LEADER)
 
     r = client.patch("/api/me", json={"academic_status": "졸업"})
     assert r.status_code == 409
     assert r.json()["detail"]["code"] == "LEADER_CANNOT_GRADUATE"
 
-    with SessionLocal() as db:
-        db.query(ClubMember).filter(ClubMember.user_id == account["student_id"]).delete()
-        db.commit()
+    # 막혔으니 학적도 그대로여야 한다
+    assert client.get("/api/me").json()["academic_status"] == "재학"
+
     client.post("/api/auth/logout")
 
 
