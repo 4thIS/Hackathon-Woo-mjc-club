@@ -6,16 +6,43 @@
  *   --colw 248px · 36px 베이스라인 그리드 · 우측 3열 grid(컬럼 흘리기 아님)
  * 검색·분야·모집 필터는 전부 클라이언트 계산이다 (docs/api.md §3 — 전체를 한 번에 받는다).
  */
-import { ref, computed, onMounted, nextTick } from 'vue'
+import { ref, computed, onMounted, nextTick, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import api from '../api'
+import { useAuth } from '../stores/auth'
 import { CATEGORY_NAMES, catKey } from '../components/ClubCategory'
+import ClubApplyDialog from '../components/ClubApplyDialog.vue'
 
 /* 카테고리 순서 = 화면에 흐르는 순서. 색은 theme.css 의 카테고리 색 토큰만 쓴다 */
 const CATS = CATEGORY_NAMES.map((nm) => ({ nm, v: `var(--cat-${catKey(nm)}-b)` }))
 
+const route = useRoute()
+const router = useRouter()
+const auth = useAuth()
+
 const clubs = ref([])
 const loading = ref(true)
 const error = ref('')
+
+/* 개설 신청은 모달이다 (디자인 기획 §6-2). 로그인해야 신청할 수 있으므로
+   비로그인이면 버튼을 잠그고 이유를 호버로 알린다 (동아리 가입 신청과 같은 규칙) */
+const applyDlg = ref(null)
+const applyLocked = computed(() => !auth.isLoggedIn)
+const applyReason = computed(() => (applyLocked.value ? '로그인하면 동아리를 개설할 수 있습니다.' : ''))
+
+function openApply() {
+  if (applyLocked.value) return
+  applyDlg.value?.open()
+}
+
+/* /clubs/new 로 들어오면 이 화면으로 보내고 모달을 연다 (라우터 redirect) */
+function openFromQuery() {
+  if (route.query.new === undefined) return
+  const { new: _n, ...rest } = route.query
+  router.replace({ path: route.path, query: rest })
+  if (!applyLocked.value) nextTick(() => applyDlg.value?.open())
+}
+watch(() => route.query.new, openFromQuery)
 
 const fCat = ref('전체')
 const fRec = ref('all')
@@ -26,6 +53,7 @@ const qInput = ref(null)
 const isOpen = (c) => c.recruit_status === '모집중' || c.recruit_status === '상시모집'
 
 onMounted(async () => {
+  openFromQuery()
   try {
     const res = await api.clubs.list()
     clubs.value = res?.items ?? []
@@ -98,10 +126,13 @@ async function clearQuery() {
       <h1 class="latin">Archive</h1>
       <div class="head-row">
         <p class="sub">{{ loading ? '불러오는 중…' : sub }}</p>
-        <!-- 헤더에 있던 진입점. 동아리를 찾다가 없을 때 누르는 자리라 여기가 맞다 -->
-        <RouterLink class="new-club" to="/clubs/new">
-          <span aria-hidden="true">＋</span> 동아리 개설
-        </RouterLink>
+        <!-- 헤더에 있던 진입점. 동아리를 찾다가 없을 때 누르는 자리라 여기가 맞다.
+             잠긴 버튼은 마우스 이벤트를 받지 않으므로 감싼 칸이 호버를 대신 받는다 -->
+        <span class="apply-slot" :data-tip="applyReason">
+          <button class="new-club" type="button" :disabled="applyLocked" @click="openApply">
+            <span aria-hidden="true">＋</span> 동아리 개설
+          </button>
+        </span>
       </div>
 
       <div class="search">
@@ -157,7 +188,9 @@ async function clearQuery() {
         <b>찾는 동아리가 없어요</b>
         검색어나 분야를 바꿔보세요.<br />
         원하는 동아리가 없다면
-        <RouterLink class="link" to="/clubs/new">직접 개설</RouterLink>할 수도 있습니다.
+        <button class="link as-text" type="button" :disabled="applyLocked" @click="openApply">
+          직접 개설
+        </button>할 수도 있습니다.
       </p>
 
       <template v-else>
@@ -179,6 +212,8 @@ async function clearQuery() {
         </section>
       </template>
     </div>
+
+    <ClubApplyDialog ref="applyDlg" />
   </div>
 </template>
 
@@ -229,11 +264,42 @@ async function clearQuery() {
   font-size: 13px;
   color: var(--dim);
 }
+/* 잠금 이유는 마우스를 올렸을 때만 연하게 (동아리 상세의 가입 신청과 같은 규칙) */
+.apply-slot {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+}
+.apply-slot:not([data-tip=''])::after {
+  content: attr(data-tip);
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 8px);
+  transform: translateY(4px);
+  padding: 7px 12px;
+  border-radius: 10px;
+  background: var(--card);
+  border: var(--border);
+  box-shadow: 0 6px 18px var(--shadow);
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--dim);
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+.apply-slot:not([data-tip='']):hover::after {
+  opacity: 0.92;
+  transform: none;
+}
+
 .new-club {
   display: inline-flex;
   align-items: center;
   gap: 5px;
   flex: none;
+  cursor: pointer;
   padding: 6px 12px;
   border: var(--border);
   border-radius: var(--r-chip);
@@ -243,9 +309,13 @@ async function clearQuery() {
   font-weight: 700;
   transition: border-color var(--t-hover), color var(--t-hover);
 }
-.new-club:hover {
+.new-club:hover:not(:disabled) {
   border-color: var(--accent);
   color: var(--accent);
+}
+.new-club:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 .new-club span {
   font-size: 13px;
@@ -485,6 +555,22 @@ async function clearQuery() {
 .none .link {
   color: var(--accent);
   font-weight: 700;
+}
+/* 본문 속 링크처럼 보이는 버튼 (모달을 여는 자리) */
+.link.as-text {
+  border: none;
+  background: none;
+  padding: 0;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+.link.as-text:hover:not(:disabled) {
+  text-decoration: underline;
+}
+.link.as-text:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 @media (prefers-reduced-motion: reduce) {

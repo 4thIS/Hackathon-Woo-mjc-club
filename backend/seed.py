@@ -262,7 +262,7 @@ def main() -> None:
                 if i % 3 == 0:
                     db.add(Like(user_id=STUDENT2_ID, post_id=p.id))
 
-        # --- 시연용 심사 대기 건 (구현계획 T7 — 빈 화면 금지) -----------------
+        # --- 시연용 심사 대기 건 (빈 화면 금지) ---------------------------
         db.add(JoinForm(club_id=by_name["고리사진부"].id, fields=JOIN_FORM_FIELDS, required=True))
 
         for uid, club_name, answers in PENDING_JOINS:

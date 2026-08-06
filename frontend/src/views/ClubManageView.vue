@@ -1,5 +1,5 @@
 <script setup>
-/* T3 · T4 담당 th. 명세: docs/api.md §4
+/* 동아리 관리 — 명세: docs/api.md §4
  * 가입폼 편집 · 신청자 승인/거절 · 부원 관리(기수/위임) · 탈퇴 요청 승인 · 동아리 정보 수정
  */
 import { computed, onMounted, reactive, ref } from 'vue'
@@ -230,7 +230,7 @@ async function saveClubInfo() {
 
 <template>
   <section class="container page">
-    <p class="eyebrow">T3 · T4 · 동아리 관리</p>
+    <p class="eyebrow">동아리 관리</p>
 
     <div v-if="loading" class="sub">불러오는 중…</div>
 

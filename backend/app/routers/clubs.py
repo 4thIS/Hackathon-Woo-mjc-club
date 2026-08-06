@@ -1,4 +1,4 @@
-"""T2 — 동아리 탐색 (담당 cw). 명세: docs/api.md §3"""
+"""동아리 탐색 — 명세: docs/api.md §3"""
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import func, select

@@ -1,4 +1,4 @@
-"""T3/T4 — 가입·탈퇴·부원 (담당 th). 명세: docs/api.md §4"""
+"""가입·탈퇴·부원 — 명세: docs/api.md §4"""
 
 from datetime import timedelta
 

@@ -111,7 +111,7 @@ gender           남 | 여
 
 ---
 
-## 2. 인증·계정 (T1 · wj)
+## 2. 인증·계정
 
 ### `POST /api/auth/signup` — `공개`
 
@@ -267,7 +267,7 @@ gender           남 | 여
 
 ---
 
-## 3. 동아리 탐색 (T2 · cw)
+## 3. 동아리 탐색
 
 ### `GET /api/clubs` — `공개`
 
@@ -392,7 +392,7 @@ gender           남 | 여
 
 ---
 
-## 4. 가입·탈퇴·부원 (T3/T4 · th)
+## 4. 가입·탈퇴·부원
 
 ### `GET /api/clubs/{club_id}/join-form` — `공개`
 
@@ -403,7 +403,7 @@ gender           남 | 여
 
 폼이 없으면 `{ "required": false, "fields": [] }`. **404를 쓰지 않는다** — 프론트 분기를 줄이기 위해서다.
 
-`type`은 `text`(한 줄) · `textarea`(여러 줄) 두 가지만. (구현계획 T3 컷라인)
+`type`은 `text`(한 줄) · `textarea`(여러 줄) 두 가지만.
 
 ### `PUT /api/clubs/{club_id}/join-form` — `장`
 
@@ -516,7 +516,7 @@ gender           남 | 여
 
 ---
 
-## 5. 동아리 개설·관리자 (T4 · th)
+## 5. 동아리 개설·관리자
 
 ### `POST /api/club-applications` — `인증`
 
@@ -623,7 +623,7 @@ gender           남 | 여
 
 ---
 
-## 6. 활동 글 (T5 · cw)
+## 6. 활동 글
 
 ### `POST /api/uploads` — `인증`
 
@@ -664,7 +664,7 @@ gender           남 | 여
 
 ---
 
-## 7. AI 활동 글 초안 (T6 · wj) ⭐
+## 7. AI 활동 글 초안 ⭐
 
 ### `POST /api/ai/draft` — `인증` + AI 키 등록됨
 
@@ -711,7 +711,7 @@ gender           남 | 여
 | 메인 캐러셀 | `GET /api/posts/highlights` mock 12건이면 기하 확인까지 끝난다 |
 | 아카이브 | `GET /api/clubs` mock 40건 — 검색·파셋 전부 클라이언트 계산이라 백엔드 무관 |
 | 상세 타임라인 | `GET /api/clubs/{id}/posts` offset/limit mock으로 배치 로드까지 검증 가능 |
-| 글 작성 | `POST /api/ai/draft` mock으로 T6 전에 화면 완성 |
+| 글 작성 | `POST /api/ai/draft` mock으로 화면 먼저 완성 |
 
 ---
 
