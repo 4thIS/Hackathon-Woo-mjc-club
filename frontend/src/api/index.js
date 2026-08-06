@@ -119,6 +119,8 @@ export const api = {
     approve: (id) => post(`/admin/club-applications/${id}/approve`),
     reject: (id, reason) => post(`/admin/club-applications/${id}/reject`, { reason }),
     updateClub: (id, payload) => patch(`/admin/clubs/${id}`, payload),
+    users: (params) => get('/admin/users' + qs(params)),
+    updateUser: (id, payload) => patch(`/admin/users/${id}`, payload),
   },
 
   // --- 활동 글 (T5 · §6) ---

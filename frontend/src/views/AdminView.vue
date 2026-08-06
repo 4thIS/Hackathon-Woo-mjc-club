@@ -1,9 +1,13 @@
 <script setup>
 /* T4 · 담당 th. 명세: docs/api.md §5 — 개설 신청 승인/거절(사유 필수) · 보관 전환 · 동아리장 강제 교체
- * 관리자 유저·게시글 관리 화면은 컷라인(C) — seed 관리자 + DB 직접 조작으로 대체 (구현계획 T4)
+ * 유저 관리 탭은 T4-C 복구분 (wj) — AdminUserPanel.vue
+ * 게시글 전체 관리는 컷라인 유지 (api.md §10)
  */
 import { onMounted, ref } from 'vue'
 import api from '../api'
+import AdminUserPanel from '../components/AdminUserPanel.vue'
+
+const tab = ref('applications')   // applications | users
 
 const statusFilter = ref('심사중')
 const applications = ref([])
@@ -62,9 +66,23 @@ async function confirmReject() {
 
 <template>
   <section class="container page">
-    <p class="eyebrow">T4 · 관리자</p>
-    <h1 class="page-title">동아리 개설 신청</h1>
+    <p class="eyebrow">관리자</p>
+    <h1 class="page-title">{{ tab === 'users' ? '유저 관리' : '동아리 개설 신청' }}</h1>
 
+    <div class="tabs" role="tablist">
+      <button class="tab" :class="{ on: tab === 'applications' }" role="tab"
+              :aria-selected="tab === 'applications'" @click="tab = 'applications'">
+        개설 신청
+      </button>
+      <button class="tab" :class="{ on: tab === 'users' }" role="tab"
+              :aria-selected="tab === 'users'" @click="tab = 'users'">
+        유저
+      </button>
+    </div>
+
+    <AdminUserPanel v-if="tab === 'users'" />
+
+    <template v-else>
     <div class="filter">
       <select v-model="statusFilter" @change="load">
         <option value="심사중">심사중</option>
@@ -110,10 +128,20 @@ async function confirmReject() {
         </div>
       </div>
     </dialog>
+    </template>
   </section>
 </template>
 
 <style scoped>
+.tabs { display: flex; gap: 6px; margin: 16px 0 20px; border-bottom: 1px solid var(--line); }
+.tab {
+  background: none; border: none; border-bottom: 2px solid transparent;
+  padding: 10px 14px; margin-bottom: -1px;
+  font: inherit; font-size: 14px; font-weight: 700; color: var(--dim); cursor: pointer;
+}
+.tab:hover { color: var(--ink); }
+.tab.on { color: var(--accent); border-bottom-color: var(--accent); }
+
 .page { padding: 56px 0 140px; }
 .filter { margin: 16px 0 8px; max-width: 160px; }
 .flash { margin-bottom: 12px; }
