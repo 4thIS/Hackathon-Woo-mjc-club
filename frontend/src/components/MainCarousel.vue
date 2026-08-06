@@ -8,7 +8,7 @@
  * 호 위 SVG 라벨은 활동 날짜다 — 이 띠 자체가 타임라인이다.
  * 동아리명은 카드 사진 왼쪽 위에 북마크로 얹는다.
  */
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { catKey, catEmoji } from './ClubCategory'
 
 const props = defineProps({
@@ -64,6 +64,33 @@ const offset = ref(0)
 const reduced = typeof matchMedia === 'function'
   ? matchMedia('(prefers-reduced-motion: reduce)').matches
   : false
+
+/* ── 등장 ────────────────────────────────────────────────
+ * mockups/carousel-intro.html 변형 C(속도 1.5×)에서 고른 안. 수치는 거기서 그대로 가져왔다.
+ *
+ *   선이 얇고 옅게 먼저 나타나 제 굵기로 진해지고 → 마디·줄기·날짜가 서고 → 카드가 뜬다.
+ *
+ * 셋이 동시에 나타나면 완성된 그림이 "딱" 꽂히는 느낌이 든다. 순서를 주면 띠가 먼저
+ * 그려지고 그 위에 기록이 얹히는 것으로 읽힌다.
+ */
+const INTRO = { line: 347, markStart: 191, markDur: 173, cardStart: 295, total: 1080 }
+
+const introT = ref(0)
+const introRunning = ref(false)   // 카드 transition 은 등장 동안만 — 회전 중엔 투명도가 늘어진다
+
+const clamp01 = (k) => Math.min(1, Math.max(0, k))
+const easeOut = (k) => 1 - (1 - k) ** 3
+
+const intro = computed(() => {
+  const t = introT.value
+  const e = easeOut(clamp01(t / INTRO.line))
+  return {
+    bandW: 1 + 2.5 * e,
+    bandO: 0.25 + 0.75 * e,
+    markO: easeOut(clamp01((t - INTRO.markStart) / INTRO.markDur)),
+    cardIn: t >= INTRO.cardStart,
+  }
+})
 
 const frame = computed(() => {
   const w = stageW.value
@@ -157,11 +184,16 @@ const emojiOf = (p) => (p.photo ? null : catEmoji(p?.category))
 const dateText = (d) => (d ? String(d).replaceAll('-', '.') : '')
 
 function cardStyle(it) {
+  const shown = intro.value.cardIn
   return {
     left: `${it.t.x}px`,
     top: `${it.t.y}px`,
     transform: `translate(-50%,-50%) rotate(${it.t.rotate}deg) scale(${it.t.scale})`,
-    opacity: it.t.opacity,
+    // translate 는 transform 과 별개 속성이라 회전·배율을 건드리지 않고 따로 움직인다.
+    // 띠 쪽에서 밀려나오게 — 위 카드는 아래에서, 아래 카드는 위에서 온다
+    translate: shown ? '0 0' : (it.up ? '0 14px' : '0 -14px'),
+    filter: shown ? 'none' : 'blur(7px)',
+    opacity: shown ? it.t.opacity : 0,
     zIndex: Math.round(it.t.scale * 1000),
   }
 }
@@ -272,6 +304,38 @@ function autoSpin(t) {
   offset.value += (AUTO_PER_SEC * dt) / 1000
 }
 
+function startAuto() {
+  if (reduced || autoRaf) return
+  autoLast = 0
+  autoRaf = requestAnimationFrame(autoSpin)
+}
+
+/* 등장은 글이 들어온 뒤에 한 번만 재생한다 — 목록이 비어 있을 때 재생하면
+ * 정작 카드가 도착할 때는 이미 끝나 있어 "딱" 뜨는 그림으로 돌아간다 */
+let introRaf = null
+let introPlayed = false
+
+function playIntro() {
+  if (introPlayed) return
+  introPlayed = true
+  if (reduced) { introT.value = INTRO.total; startAuto(); return }
+
+  introRunning.value = true
+  const t0 = performance.now()
+  const step = (now) => {
+    introT.value = now - t0
+    if (introT.value < INTRO.total) {
+      introRaf = requestAnimationFrame(step)
+    } else {
+      introT.value = INTRO.total
+      introRunning.value = false
+      introRaf = null
+      startAuto()                     // 등장이 끝난 뒤에 흐르기 시작한다
+    }
+  }
+  introRaf = requestAnimationFrame(step)
+}
+
 /* ── 크기 추적 ────────────────────────────────────────── */
 let ro = null
 function measure() {
@@ -288,12 +352,15 @@ onMounted(() => {
     ro.observe(stage.value)
   }
   addEventListener('resize', measure)
-  if (!reduced) autoRaf = requestAnimationFrame(autoSpin)
+  if (props.posts.length) playIntro()
 })
+
+watch(() => props.posts.length, (n) => { if (n) playIntro() })
 
 onBeforeUnmount(() => {
   stopRaf()
   if (autoRaf) cancelAnimationFrame(autoRaf)
+  if (introRaf) cancelAnimationFrame(introRaf)
   ro?.disconnect()
   removeEventListener('resize', measure)
 })
@@ -314,22 +381,26 @@ onBeforeUnmount(() => {
     @keydown="onKeydown"
   >
     <svg class="band" :viewBox="`0 0 ${frame.w} ${frame.h}`" aria-hidden="true">
+      <!-- 등장 1) 띠 — 얇고 옅게 나타나 제 굵기로 진해진다 -->
       <path
         v-for="(d, i) in frame.bands" :key="`band-${i}`"
-        :d="d" fill="none" stroke="var(--band)" stroke-width="3.5" stroke-linecap="round"
+        :d="d" fill="none" stroke="var(--band)"
+        :stroke-width="intro.bandW" :opacity="intro.bandO" stroke-linecap="round"
       />
 
+      <!-- 등장 2) 마디·줄기·날짜 — 띠가 거의 다 진해진 뒤에 선다 -->
       <template v-for="it in frame.items" :key="`g-${it.post.id}`">
-        <circle :cx="it.dot.cx" :cy="it.dot.cy" :r="it.dot.r" fill="var(--band)" :opacity="it.t.opacity" />
+        <circle :cx="it.dot.cx" :cy="it.dot.cy" :r="it.dot.r" fill="var(--band)"
+                :opacity="it.t.opacity * intro.markO" />
         <line
           :x1="it.stem.x1" :y1="it.stem.y1" :x2="it.stem.x2" :y2="it.stem.y2"
-          stroke="var(--band)" :stroke-width="it.stem.w" :opacity="it.t.opacity"
+          stroke="var(--band)" :stroke-width="it.stem.w" :opacity="it.t.opacity * intro.markO"
         />
         <!-- 호 위의 라벨 = 활동 날짜. 띠를 따라 시간이 흐른다 -->
         <text
           :x="it.label.x" :y="it.label.y" text-anchor="middle"
           :font-size="it.label.size" font-weight="700" fill="var(--dim)"
-          :opacity="it.t.opacity" font-family="inherit" :transform="it.label.rotate"
+          :opacity="it.t.opacity * intro.markO" font-family="inherit" :transform="it.label.rotate"
           style="font-variant-numeric: tabular-nums"
         >{{ dateText(it.post.activity_date) }}</text>
       </template>
@@ -337,7 +408,7 @@ onBeforeUnmount(() => {
       <line
         v-for="(tk, i) in frame.ticks" :key="`tick-${i}`"
         :x1="tk.x1" :y1="tk.y1" :x2="tk.x2" :y2="tk.y2"
-        stroke="var(--band)" stroke-width="3.5" stroke-linecap="round"
+        stroke="var(--band)" :stroke-width="intro.bandW" :opacity="intro.bandO" stroke-linecap="round"
       />
     </svg>
 
@@ -346,6 +417,7 @@ onBeforeUnmount(() => {
         v-for="it in frame.items"
         :key="it.post.id"
         class="card"
+        :class="{ introing: introRunning }"
         type="button"
         :data-id="it.post.id"
         :style="cardStyle(it)"
@@ -407,6 +479,16 @@ onBeforeUnmount(() => {
   transition: box-shadow var(--t-hover);
 }
 .card:hover { box-shadow: 0 12px 34px var(--shadowUp); }
+
+/* 등장 동안에만 붙인다. 회전 중에는 각도에 따라 투명도가 매 프레임 바뀌므로
+   transition 이 남아 있으면 카드가 흐릿하게 늘어져 따라온다 */
+.card.introing {
+  transition:
+    opacity .5s cubic-bezier(.19, .72, .28, 1),
+    filter .5s cubic-bezier(.19, .72, .28, 1),
+    translate .5s cubic-bezier(.19, .72, .28, 1),
+    box-shadow var(--t-hover);
+}
 
 .photo {
   display: grid; place-items: center;
