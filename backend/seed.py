@@ -9,7 +9,7 @@ data/clubs.json, 출처는 https://www.mjc.ac.kr/ibuilder.do?menu_idx=155
 
 25개 중 6개(DEMO_LED)에만 동아리장을 배정하고 모집중으로 둔다.
 승인해줄 사람이 없는 동아리를 모집중으로 두지 않기 위해서다.
-데모 계정 비밀번호는 전부 `test1234` 다.
+데모 계정 비밀번호는 전부 `test1234!` 다.
 """
 
 import json
@@ -41,7 +41,7 @@ from app.models import (
 )
 from app.security import hash_password
 
-PW = hash_password("test1234")
+PW = hash_password("test1234!")
 
 
 def u(
@@ -280,7 +280,7 @@ def main() -> None:
         print(f"완료 — 유저 {len(USERS)} · 동아리 {len(clubs)} · 활동글 {len(posts)}")
         print(f"        심사중 가입신청 {len(PENDING_JOINS)} · 개설신청 1 · 탈퇴요청 1 · 가입폼 1")
         print(f"데모 계정: {STUDENT_ID}@mjc.ac.kr (학생) · {LEADER_IDS[0]}@mjc.ac.kr (동아리장)")
-        print(f"관리자:   {ADMIN_ID}@mjc.ac.kr · 비밀번호는 전부 test1234")
+        print(f"관리자:   {ADMIN_ID}@mjc.ac.kr · 비밀번호는 전부 test1234!")
     finally:
         db.close()
 

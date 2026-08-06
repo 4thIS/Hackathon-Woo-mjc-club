@@ -27,7 +27,7 @@ def account():
     sid = f"99{uuid.uuid4().int % 100_000_000:08d}"
     yield {
         "email": f"{sid}@mjc.ac.kr",
-        "password": "test1234",
+        "password": "test1234!",
         "student_id": sid,
         "name": "테스터",
         "dept": "컴퓨터공학과",
@@ -77,7 +77,7 @@ def test_signup_and_verify_then_login(client, account):
     assert r.json()["student_id"] == account["student_id"]
 
     # 인증 전에도 로그인은 된다. 다만 email_verified 가 False 다 (기획서 §4.2)
-    r = client.post("/api/auth/login", json={"email": account["email"], "password": "test1234"})
+    r = client.post("/api/auth/login", json={"email": account["email"], "password": "test1234!"})
     assert r.status_code == 200
     assert r.json()["email_verified"] is False
 
@@ -158,7 +158,7 @@ def test_resend_hides_whether_email_exists(client):
 
 def test_update_me_allows_only_dept_status_password(client, account):
     client.post("/api/auth/signup", json=account)
-    client.post("/api/auth/login", json={"email": account["email"], "password": "test1234"})
+    client.post("/api/auth/login", json={"email": account["email"], "password": "test1234!"})
 
     r = client.patch("/api/me", json={"dept": "전자공학과", "academic_status": "휴학"})
     assert r.status_code == 200
@@ -172,9 +172,9 @@ def test_update_me_allows_only_dept_status_password(client, account):
     assert r.json()["id"] == account["student_id"]
 
     # 새 비밀번호로 실제로 로그인이 된다
-    client.patch("/api/me", json={"password": "newpass1234"})
+    client.patch("/api/me", json={"password": "newpass1234!"})
     client.post("/api/auth/logout")
-    r = client.post("/api/auth/login", json={"email": account["email"], "password": "newpass1234"})
+    r = client.post("/api/auth/login", json={"email": account["email"], "password": "newpass1234!"})
     assert r.status_code == 200
     client.post("/api/auth/logout")
 
@@ -188,7 +188,7 @@ def join(student_id: str, club_id: int, role: str) -> None:
 def test_graduation_turns_memberships_into_ob(client, account, club):
     """졸업하면 모든 소속이 OB 가 된다 (기획서 §3.1)."""
     client.post("/api/auth/signup", json=account)
-    client.post("/api/auth/login", json={"email": account["email"], "password": "test1234"})
+    client.post("/api/auth/login", json={"email": account["email"], "password": "test1234!"})
     join(account["student_id"], club, enums.ROLE_MEMBER)
 
     mine = client.get("/api/me/clubs").json()
@@ -204,7 +204,7 @@ def test_graduation_turns_memberships_into_ob(client, account, club):
 def test_leader_cannot_graduate(client, account, club):
     """동아리장이 OB 가 되면 그 동아리가 마비된다 (기획서 §4.3)."""
     client.post("/api/auth/signup", json=account)
-    client.post("/api/auth/login", json={"email": account["email"], "password": "test1234"})
+    client.post("/api/auth/login", json={"email": account["email"], "password": "test1234!"})
     join(account["student_id"], club, enums.ROLE_LEADER)
 
     r = client.patch("/api/me", json={"academic_status": "졸업"})
@@ -219,7 +219,7 @@ def test_leader_cannot_graduate(client, account, club):
 
 def test_my_requests_has_three_lists(client, account):
     client.post("/api/auth/signup", json=account)
-    client.post("/api/auth/login", json={"email": account["email"], "password": "test1234"})
+    client.post("/api/auth/login", json={"email": account["email"], "password": "test1234!"})
 
     r = client.get("/api/me/requests")
     assert r.status_code == 200
@@ -229,7 +229,7 @@ def test_my_requests_has_three_lists(client, account):
 
 def test_logout_clears_session(client, account):
     client.post("/api/auth/signup", json=account)
-    client.post("/api/auth/login", json={"email": account["email"], "password": "test1234"})
+    client.post("/api/auth/login", json={"email": account["email"], "password": "test1234!"})
     assert client.get("/api/me").status_code == 200
 
     client.post("/api/auth/logout")
@@ -273,7 +273,7 @@ def test_grade_is_editable_and_clearable(client, account):
 def test_my_requests_drops_finished_items(client, account, club):
     """다 끝난 신청이 쌓이면 지금 뭘 기다리는지 흐려진다. 진행중과 거절만 남는다."""
     client.post("/api/auth/signup", json=account)
-    client.post("/api/auth/login", json={"email": account["email"], "password": "test1234"})
+    client.post("/api/auth/login", json={"email": account["email"], "password": "test1234!"})
     token = token_of(account["student_id"])
     client.get("/api/auth/verify", params={"token": token}, follow_redirects=False)
 
@@ -299,3 +299,48 @@ def test_my_requests_drops_finished_items(client, account, club):
     with SessionLocal() as db:
         db.query(JoinRequest).filter(JoinRequest.id == req_id).delete()
         db.commit()
+
+
+@pytest.mark.parametrize(
+    ("pw", "expect"),
+    [
+        ("test1234!", None),          # 영문 + 숫자 + 특수문자
+        ("short1!", "8자"),           # 너무 짧다
+        ("testtest!", "숫자"),        # 숫자 없음
+        ("12345678!", "영문"),        # 영문 없음
+        ("test12345", "특수문자"),    # 특수문자 없음
+        ("test 1234!", "공백"),       # 공백
+    ],
+)
+def test_password_rules(pw, expect):
+    from app.security import password_problem
+
+    why = password_problem(pw)
+    if expect is None:
+        assert why is None
+    else:
+        assert why is not None and expect in why
+
+
+def test_signup_rejects_weak_password(client, account):
+    r = client.post("/api/auth/signup", json={**account, "password": "test12345"})
+    assert r.status_code == 400
+    assert r.json()["detail"]["code"] == "WEAK_PASSWORD"
+    assert "특수문자" in r.json()["detail"]["message"]
+
+
+def test_password_change_follows_the_same_rule(client, account):
+    client.post("/api/auth/signup", json=account)
+    client.post("/api/auth/login", json={"email": account["email"], "password": "test1234!"})
+
+    bad = client.patch("/api/me", json={"password": "onlyletters!"})
+    assert bad.status_code == 400
+    assert bad.json()["detail"]["code"] == "WEAK_PASSWORD"
+
+    ok = client.patch("/api/me", json={"password": "newpass1234!"})
+    assert ok.status_code == 200
+    client.post("/api/auth/logout")
+    again = client.post("/api/auth/login",
+                        json={"email": account["email"], "password": "newpass1234!"})
+    assert again.status_code == 200
+    client.post("/api/auth/logout")

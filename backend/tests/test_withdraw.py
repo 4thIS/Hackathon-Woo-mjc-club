@@ -40,7 +40,7 @@ def test_withdraw_removes_account_and_memberships(client, make_user, make_club, 
     club = make_club()
     join_club(user, club)
 
-    r = client.request("DELETE", "/api/me", json={"password": "test1234"},
+    r = client.request("DELETE", "/api/me", json={"password": "test1234!"},
                        cookies=auth_cookie(user))
     assert r.status_code == 204
 
@@ -69,7 +69,7 @@ def test_posts_survive_withdrawal(client, make_user, make_club, join_club, auth_
     db.get(ClubMember, {"user_id": heir.id, "club_id": club.id}).role = enums.ROLE_LEADER
     db.commit()
 
-    r = client.request("DELETE", "/api/me", json={"password": "test1234"},
+    r = client.request("DELETE", "/api/me", json={"password": "test1234!"},
                        cookies=auth_cookie(author))
     assert r.status_code == 204
 
@@ -88,7 +88,7 @@ def test_leader_must_hand_over_first(client, make_user, make_club, join_club, au
     club = make_club()
     join_club(user, club, role=enums.ROLE_LEADER)
 
-    r = client.request("DELETE", "/api/me", json={"password": "test1234"},
+    r = client.request("DELETE", "/api/me", json={"password": "test1234!"},
                        cookies=auth_cookie(user))
     assert r.status_code == 409
     assert r.json()["detail"]["code"] == "LEADER_CANNOT_LEAVE"
@@ -102,7 +102,7 @@ def test_last_admin_cannot_withdraw(client, make_user, auth_cookie, db):
         o.is_admin = False
     db.commit()
     try:
-        r = client.request("DELETE", "/api/me", json={"password": "test1234"},
+        r = client.request("DELETE", "/api/me", json={"password": "test1234!"},
                            cookies=auth_cookie(admin))
         assert r.status_code == 409
         assert r.json()["detail"]["code"] == "LAST_ADMIN"
@@ -122,7 +122,7 @@ def test_likes_are_removed(client, make_user, make_club, join_club, auth_cookie,
     db.add(Like(user_id=liker.id, post_id=post.id))
     db.commit()
 
-    r = client.request("DELETE", "/api/me", json={"password": "test1234"},
+    r = client.request("DELETE", "/api/me", json={"password": "test1234!"},
                        cookies=auth_cookie(liker))
     assert r.status_code == 204
     assert db.scalar(select(Like).where(Like.user_id == liker.id)) is None
@@ -133,11 +133,11 @@ def test_student_id_can_be_reused(client, make_user, auth_cookie):
     user = make_user()
     sid, email = user.id, user.email
 
-    assert client.request("DELETE", "/api/me", json={"password": "test1234"},
+    assert client.request("DELETE", "/api/me", json={"password": "test1234!"},
                           cookies=auth_cookie(user)).status_code == 204
 
     r = client.post("/api/auth/signup", json={
-        "email": email, "password": "test1234", "student_id": sid,
+        "email": email, "password": "test1234!", "student_id": sid,
         "name": "재가입자", "dept": "컴퓨터공학과", "birth": "2005-01-01", "gender": "남",
     })
     assert r.status_code == 201

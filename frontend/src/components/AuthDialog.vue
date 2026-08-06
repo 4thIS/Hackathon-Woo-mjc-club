@@ -9,6 +9,7 @@ import { useRoute, useRouter } from 'vue-router'
 import api from '../api'
 import { useAuth } from '../stores/auth'
 import { CONSENTS } from '../content/terms'
+import { PW_RULES, passwordOk } from '../content/password'
 import { GRADE_OPTIONS } from '../content/grade'
 
 const auth = useAuth()
@@ -102,6 +103,10 @@ async function submitSignup() {
   error.value = ''
   if (su.password !== su.password2) {
     error.value = '비밀번호가 서로 다릅니다.'
+    return
+  }
+  if (!passwordOk(su.password)) {
+    error.value = '비밀번호는 8자 이상이며 영문·숫자·특수문자를 모두 포함해야 합니다.'
     return
   }
   if (!allAgreed.value) {
@@ -258,7 +263,11 @@ async function resend() {
               <label for="su-pw">비밀번호<span class="req">*</span></label>
               <input id="su-pw" v-model="su.password" type="password" autocomplete="new-password"
                      minlength="8" required>
-              <p class="hint">8자 이상</p>
+                            <ul class="pw-rules" aria-label="비밀번호 조건">
+                <li v-for="r in PW_RULES" :key="r.key" :class="{ ok: r.test(su.password) }">
+                  <span aria-hidden="true">{{ r.test(su.password) ? '✓' : '·' }}</span> {{ r.label }}
+                </li>
+              </ul>
             </div>
             <div class="fld">
               <label for="su-pw2">비밀번호 확인<span class="req">*</span></label>
