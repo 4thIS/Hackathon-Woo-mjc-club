@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from .. import enums, serializers
 from ..db import get_db
 from ..deps import current_user_optional, get_club, membership_of
-from ..models import Club, ClubMember, JoinForm, Post, User
+from ..models import Club, ClubMember, JoinForm, JoinRequest, Post, User
 
 router = APIRouter(tags=["clubs"])
 
@@ -47,12 +47,25 @@ def club_detail(
         recruiting = club.recruit_status in (enums.RECRUIT_MOJIP, enums.RECRUIT_ALWAYS)
         is_ob = m is not None and m.membership == enums.MEMBERSHIP_OB
         graduated = user.academic_status == enums.ACADEMIC_GRADUATED
+
+        # 심사중·거절만 노출한다 — 승인은 is_member 로 이미 드러나고, 취소는 재신청 가능 상태와 같다.
+        latest_req = db.scalar(
+            select(JoinRequest)
+            .where(JoinRequest.club_id == club.id, JoinRequest.user_id == user.id)
+            .order_by(JoinRequest.created_at.desc())
+        )
+        join_request_status = (
+            latest_req.status
+            if latest_req is not None and latest_req.status in (enums.REQ_PENDING, enums.REQ_REJECTED)
+            else None
+        )
+
         mine = {
             "is_member": m is not None,
             "role": m.role if m else None,
             "membership": m.membership if m else None,
             "gen": m.gen if m else None,
-            "join_request_status": None,  # TODO(T3): 심사중/거절 반영
+            "join_request_status": join_request_status,
             "can_apply": bool(
                 user.email_verified and recruiting and m is None and not is_ob and not graduated
             ),
