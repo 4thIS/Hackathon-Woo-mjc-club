@@ -19,6 +19,10 @@ dist/
 # 업로드된 사진 (로컬 저장)
 backend/uploads/
 
+# 로컬 확인용 SQLite 파일 (운영 DB는 Postgres)
+*.db
+!Thumbs.db
+
 # OS · 에디터
 .DS_Store
 Thumbs.db
