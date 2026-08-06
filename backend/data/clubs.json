@@ -1,0 +1,206 @@
+{
+  "source": "https://www.mjc.ac.kr/ibuilder.do?menu_idx=155",
+  "crawled_at": "2026-08-07",
+  "clubs": [
+    {
+      "name": "T.M.I.M",
+      "category": "봉사",
+      "source_category": "봉사",
+      "founded_year": 2011,
+      "purpose": "찬양 공연 및 봉사 활동",
+      "main_activities": "각종 행사 공연"
+    },
+    {
+      "name": "C.F.M",
+      "category": "봉사",
+      "source_category": "봉사",
+      "founded_year": 2018,
+      "purpose": "공연을 통한 수화의 보편화",
+      "main_activities": "다양한 봉사, 각종 공연"
+    },
+    {
+      "name": "고리사진부",
+      "category": "학술·전공",
+      "source_category": "학술",
+      "founded_year": 1979,
+      "purpose": "사진촬영, 작품연구",
+      "main_activities": "작품전시회 개최"
+    },
+    {
+      "name": "유스호스텔",
+      "category": "학술·전공",
+      "source_category": "학술",
+      "founded_year": 1985,
+      "purpose": "여행문화 정착",
+      "main_activities": "여행, 유적지 답사"
+    },
+    {
+      "name": "씨네필",
+      "category": "학술·전공",
+      "source_category": "학술",
+      "founded_year": 1992,
+      "purpose": "영화 감상 및 토론",
+      "main_activities": "좋은 영화 상영"
+    },
+    {
+      "name": "P.T.P",
+      "category": "학술·전공",
+      "source_category": "학술",
+      "founded_year": 1974,
+      "purpose": "순수한 인간 만남",
+      "main_activities": "전시, 학술, 봉사활동"
+    },
+    {
+      "name": "블랙비트",
+      "category": "학술·전공",
+      "source_category": "학술",
+      "founded_year": 2011,
+      "purpose": "힙합 음악활동을 통한 친선도모",
+      "main_activities": "각종 공연, 작곡"
+    },
+    {
+      "name": "때깔",
+      "category": "학술·전공",
+      "source_category": "학술",
+      "founded_year": 1990,
+      "purpose": "그림을 통한 친선도모",
+      "main_activities": "전시회 개최"
+    },
+    {
+      "name": "궁상각치우",
+      "category": "학술·전공",
+      "source_category": "학술",
+      "founded_year": 1985,
+      "purpose": "교내외 음악활동",
+      "main_activities": "음악활동"
+    },
+    {
+      "name": "물레방아",
+      "category": "학술·전공",
+      "source_category": "학술",
+      "founded_year": 1985,
+      "purpose": "음악적 활동",
+      "main_activities": "매년 정기공연"
+    },
+    {
+      "name": "노래창고",
+      "category": "학술·전공",
+      "source_category": "학술",
+      "founded_year": 1984,
+      "purpose": "노래를 통한 친선도모",
+      "main_activities": "정기발표회"
+    },
+    {
+      "name": "한울",
+      "category": "학술·전공",
+      "source_category": "학술",
+      "founded_year": 1987,
+      "purpose": "우리문화의 이해와 풍물 보급",
+      "main_activities": "사물놀이 보급"
+    },
+    {
+      "name": "희비",
+      "category": "학술·전공",
+      "source_category": "학술",
+      "founded_year": 2008,
+      "purpose": "친목도모와 문화증진",
+      "main_activities": "정기공연"
+    },
+    {
+      "name": "e-sports",
+      "category": "학술·전공",
+      "source_category": "학술",
+      "founded_year": 2014,
+      "purpose": "e-sports 문화창달 및 화합",
+      "main_activities": "각종대회 참가 및 개회"
+    },
+    {
+      "name": "R-eve",
+      "category": "학술·전공",
+      "source_category": "학술",
+      "founded_year": 1976,
+      "purpose": "가상·증강 현실로 다양한 콘텐츠 개발",
+      "main_activities": "콘텐츠 개발"
+    },
+    {
+      "name": "산악부",
+      "category": "체육",
+      "source_category": "체육",
+      "founded_year": 1974,
+      "purpose": "자연에 대한 애호심",
+      "main_activities": "하계, 동계, 정기 등반"
+    },
+    {
+      "name": "테니스부",
+      "category": "체육",
+      "source_category": "체육",
+      "founded_year": 1974,
+      "purpose": "건전한 인간관계 형성",
+      "main_activities": "타교교류, 총장배 대회"
+    },
+    {
+      "name": "ACE",
+      "category": "체육",
+      "source_category": "체육",
+      "founded_year": 1989,
+      "purpose": "건전한 체육활동",
+      "main_activities": "농구대회 개최"
+    },
+    {
+      "name": "탁구부",
+      "category": "체육",
+      "source_category": "체육",
+      "founded_year": 1981,
+      "purpose": "인간관계 및 체력향상",
+      "main_activities": "쌍쌍 탁구대회"
+    },
+    {
+      "name": "축구부",
+      "category": "체육",
+      "source_category": "체육",
+      "founded_year": 2007,
+      "purpose": "축구를 통한 체력증진 및 유대강화",
+      "main_activities": "대외시합을 통한 위상증진"
+    },
+    {
+      "name": "Freestep",
+      "category": "체육",
+      "source_category": "체육",
+      "founded_year": 2015,
+      "purpose": "춤을 통한 자기계발과 단체생활",
+      "main_activities": "각종 공연"
+    },
+    {
+      "name": "C.U(응원단)",
+      "category": "체육",
+      "source_category": "체육",
+      "founded_year": 2018,
+      "purpose": "응원단 운영 및 공연활동",
+      "main_activities": "응원제 및 각종 공연"
+    },
+    {
+      "name": "기독교학생회",
+      "category": "종교",
+      "source_category": "종교",
+      "founded_year": 1974,
+      "purpose": "학원복음화",
+      "main_activities": "채플, 봉사, 교내전도"
+    },
+    {
+      "name": "카톨릭학생회",
+      "category": "종교",
+      "source_category": "종교",
+      "founded_year": 1979,
+      "purpose": "학원복음, 사회복음",
+      "main_activities": "개·종강미사, 성서모임"
+    },
+    {
+      "name": "C.C.C.",
+      "category": "종교",
+      "source_category": "종교",
+      "founded_year": 1984,
+      "purpose": "캠퍼스 복음화",
+      "main_activities": "교내전도, 전도훈련"
+    }
+  ]
+}

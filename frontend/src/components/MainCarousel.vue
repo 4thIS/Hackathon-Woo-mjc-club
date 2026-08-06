@@ -8,6 +8,7 @@
  * 카드에는 사진 + 제목 2줄만 들어간다. 동아리명은 호 위 SVG 라벨이다.
  */
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { catKey, catEmoji } from './ClubCategory'
 
 const props = defineProps({
   posts: { type: Array, default: () => [] },
@@ -119,19 +120,8 @@ const frame = computed(() => {
 })
 
 /* ── 카드 표현 ─────────────────────────────────────────── */
-const CAT_KEY = {
-  '학술·전공': 'academic',
-  '공연·예술': 'art',
-  '체육': 'sports',
-  '봉사': 'volunteer',
-  '취미·교양': 'hobby',
-}
-const CAT_EMOJI = {
-  academic: '💻', art: '🎸', sports: '⚽', volunteer: '🤝', hobby: '🎲',
-}
-
 /* PostSummary.category = 동아리 분야 (docs/api.md §0.4). 값이 없을 때만 기본 그라데이션 */
-const catOf = (p) => CAT_KEY[p?.category] ?? 'academic'
+const catOf = (p) => catKey(p?.category)
 
 function photoStyle(p) {
   const cat = catOf(p)
@@ -140,7 +130,7 @@ function photoStyle(p) {
     ? { backgroundImage: `url("${p.photo}")` }
     : { backgroundImage: grad }
 }
-const emojiOf = (p) => (p.photo ? null : CAT_EMOJI[catOf(p)] ?? '📌')
+const emojiOf = (p) => (p.photo ? null : catEmoji(p?.category))
 
 function cardStyle(it) {
   return {

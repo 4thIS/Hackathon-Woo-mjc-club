@@ -182,9 +182,13 @@ def stats(db: Session = Depends(get_db)):
         .where(Club.recruit_status.in_((enums.RECRUIT_MOJIP, enums.RECRUIT_ALWAYS)))
     )
     posts = db.scalar(select(func.count()).select_from(Post).where(Post.is_public.is_(True)))
+    used_categories = db.scalar(
+        select(func.count(func.distinct(Club.category))).where(Club.status == enums.CLUB_ACTIVE)
+    )
     return {
         "clubs": clubs or 0,
         "recruiting": recruiting or 0,
         "posts": posts or 0,
-        "categories": len(enums.CATEGORIES),
+        # 열거값 개수가 아니라 실제 동아리가 있는 분야 수. 화면에서 셀 수 있는 값이어야 한다
+        "categories": used_categories or 0,
     }
