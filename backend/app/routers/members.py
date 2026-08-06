@@ -2,7 +2,7 @@
 
 from datetime import timedelta
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Response
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -295,7 +295,15 @@ def approve_leave(req_id: int, user: User = Depends(verified_user), db: Session 
 
 
 class MemberPatchIn(BaseModel):
+    """동아리장이 바꾸는 값.
+
+    학적(재학·휴학·졸업)은 여기 없다 — 사람 전역 값이라 동아리장이 건드리면
+    그 사람의 다른 동아리까지 영향을 받는다 (기획서 §3.1). 본인 또는 관리자만 바꾼다.
+    동아리 안에서의 상태는 membership(활동중·OB)이다.
+    """
+
     gen: int | None = None
+    membership: str | None = None
 
 
 class ClubPatchIn(BaseModel):
@@ -320,6 +328,8 @@ def manage_members(m: ClubMember = Depends(club_leader), db: Session = Depends(g
             "user": {"id": mm.user.id, "name": mm.user.name, "dept": mm.user.dept},
             "role": mm.role,
             "membership": mm.membership,
+            # 학적은 읽기 전용으로 함께 준다 — 동아리장이 OB 전환을 판단하는 근거다
+            "academic_status": mm.user.academic_status,
             "gen": mm.gen,
         }
         for mm in members
@@ -333,9 +343,50 @@ def update_member(
     target = db.get(ClubMember, {"user_id": user_id, "club_id": m.club_id})
     if target is None:
         raise errors.not_found("부원을 찾을 수 없습니다.")
-    target.gen = payload.gen
+
+    sent = payload.model_dump(exclude_unset=True)
+    if "gen" in sent:
+        target.gen = payload.gen
+
+    if "membership" in sent:
+        if payload.membership not in enums.MEMBERSHIPS:
+            raise errors.ApiError(400, "INVALID_INPUT", "멤버십 값이 올바르지 않습니다.")
+        # 동아리장이 OB 가 되면 그 동아리가 마비된다 (기획서 §4.3 과 같은 불변식)
+        if payload.membership == enums.MEMBERSHIP_OB and target.role == enums.ROLE_LEADER:
+            raise errors.ApiError(
+                409, "LEADER_MUST_STAY_ACTIVE", "동아리장은 OB 로 바꿀 수 없습니다. 먼저 위임해주세요."
+            )
+        target.membership = payload.membership
+
     db.commit()
-    return {"user_id": target.user_id, "gen": target.gen}
+    return {"user_id": target.user_id, "gen": target.gen, "membership": target.membership}
+
+
+@router.delete("/clubs/{club_id}/members/{user_id}", status_code=204)
+def remove_member(
+    user_id: str, m: ClubMember = Depends(club_leader), db: Session = Depends(get_db)
+):
+    """동아리장이 부원을 내보낸다. 탈퇴 요청을 기다리지 않는 강제 처리다.
+
+    본인 요청에 의한 탈퇴는 leave-requests 쪽이다 (기획서 §5.4).
+    """
+    target = db.get(ClubMember, {"user_id": user_id, "club_id": m.club_id})
+    if target is None:
+        raise errors.not_found("부원을 찾을 수 없습니다.")
+    if target.role == enums.ROLE_LEADER:
+        raise errors.ApiError(
+            409, "CANNOT_REMOVE_LEADER", "동아리장은 내보낼 수 없습니다. 먼저 위임해주세요."
+        )
+
+    # 심사중인 탈퇴 요청이 남으면 유령 항목이 된다
+    db.query(LeaveRequest).filter(
+        LeaveRequest.user_id == user_id, LeaveRequest.club_id == m.club_id,
+        LeaveRequest.status == enums.REQ_PENDING,
+    ).update({"status": enums.REQ_APPROVED}, synchronize_session=False)
+
+    db.delete(target)
+    db.commit()
+    return Response(status_code=204)
 
 
 @router.patch("/clubs/{club_id}")

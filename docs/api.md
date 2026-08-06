@@ -471,7 +471,28 @@ gender           남 | 여
 
 ### `PATCH /api/clubs/{club_id}/members/{user_id}` — `장`
 
-`{ "gen": 11 }` → `200`. 기수만 바꾼다. 부원 본인은 호출할 수 없다(기획서 §5.3.1).
+```jsonc
+{ "gen": 11, "membership": "OB" }   // 둘 다 optional, 보낸 것만 바뀐다
+```
+
+`200` → `{ user_id, gen, membership }`. 부원 본인은 호출할 수 없다(기획서 §5.3.1).
+
+**학적(재학·휴학·졸업)은 여기서 못 바꾼다.** 사람 전역 값이라 동아리장이 건드리면 그 사람의 다른 동아리까지 영향을 받는다(기획서 §3.1). 본인 또는 관리자만 바꾼다. 동아리 안에서의 상태는 `membership`이다.
+
+| 에러 | code |
+|---|---|
+| 400 | `INVALID_INPUT` — membership 이 열거값이 아님 |
+| 409 | `LEADER_MUST_STAY_ACTIVE` — 동아리장은 OB 로 바꿀 수 없다. 먼저 위임한다 |
+
+### `DELETE /api/clubs/{club_id}/members/{user_id}` — `장`
+
+동아리장이 부원을 내보낸다. 탈퇴 요청을 기다리지 않는 강제 처리다 — 본인 요청에 의한 탈퇴는 `leave-requests` 쪽이다(기획서 §5.4).
+
+`204`. 심사중인 탈퇴 요청이 있으면 함께 승인 처리한다(유령 항목 방지).
+
+| 에러 | code |
+|---|---|
+| 409 | `CANNOT_REMOVE_LEADER` — 동아리장은 내보낼 수 없다. 먼저 위임한다 |
 
 ### `PATCH /api/clubs/{club_id}` — `장`
 

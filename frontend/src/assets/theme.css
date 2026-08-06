@@ -20,6 +20,11 @@
   --warnLine: #EDD6B8;
   --warnInk: #8A6633;
 
+  /* 취소·삭제·탈퇴 같은 되돌릴 수 없는 동작. 경고(주의)와 구분해 붉은 계열로 둔다 */
+  --dangerBg: #FCEDED;
+  --dangerLine: #EFC6C6;
+  --dangerInk: #A8433F;
+
   --shadow: rgba(80, 66, 140, .10);
   --shadowUp: rgba(80, 66, 140, .18);
 
@@ -58,6 +63,10 @@
   --warnBg: #3A2E22;
   --warnLine: #57432C;
   --warnInk: #E7C48C;
+
+  --dangerBg: #3A2326;
+  --dangerLine: #5C3236;
+  --dangerInk: #F0A9A5;
 
   --shadow: rgba(0, 0, 0, .30);
   --shadowUp: rgba(0, 0, 0, .44);

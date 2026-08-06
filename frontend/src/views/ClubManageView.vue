@@ -22,11 +22,28 @@ const forbidden = ref(false)
 const message = ref('')
 const messageIsError = ref(false)
 
+/* 저장 결과는 팝업(모달)으로 알린다 — 인라인 메시지는 폼 아래에 있어 놓치기 쉽다 */
+const resultDlg = ref(null)
+const result = reactive({ ok: true, title: '', detail: '' })
+
+function popup(title, detail = '', ok = true) {
+  Object.assign(result, { ok, title, detail })
+  resultDlg.value?.showModal()
+}
+
 function flash(text, isError = false) {
   message.value = text
   messageIsError.value = isError
   setTimeout(() => { if (message.value === text) message.value = '' }, 3500)
 }
+
+/* 저장된 상태의 사본. 이것과 다를 때만 저장 버튼이 열린다 */
+const savedClub = ref('')
+const savedForm = ref('')
+
+const snap = (o) => JSON.stringify(o)
+const clubDirty = computed(() => snap(clubEdit) !== savedClub.value)
+const formDirty = computed(() => snap(formDraft) !== savedForm.value)
 
 async function loadAll() {
   loading.value = true
@@ -50,6 +67,8 @@ async function loadAll() {
     clubEdit.meet_place = c.meet_place ?? ''
     clubEdit.recruit_status = c.recruit_status
     clubEdit.current_gen = c.current_gen
+    savedClub.value = snap(clubEdit)
+    savedForm.value = snap(formDraft)
   } catch (e) {
     if (e instanceof ApiError && e.status === 403) forbidden.value = true
     else flash(e.message, true)
@@ -106,9 +125,13 @@ async function saveForm() {
     const saved = await api.joinForm.put(clubId.value, formDraft)
     formDraft.required = saved.required
     formDraft.fields = saved.fields
-    flash('가입폼을 저장했습니다.')
+    savedForm.value = snap(formDraft)
+    popup('가입폼을 저장했습니다',
+      saved.fields.length
+        ? `질문 ${saved.fields.length}개 · ${saved.required ? '작성 필수' : '작성 선택'}`
+        : '질문이 없어 신청자는 바로 신청합니다.')
   } catch (e) {
-    flash(e.message, true)
+    popup('가입폼을 저장하지 못했습니다', e.message, false)
   }
 }
 
@@ -117,9 +140,44 @@ async function saveForm() {
 async function updateGen(m) {
   try {
     await api.clubs.updateMember(clubId.value, m.user.id, { gen: m.gen === '' ? null : Number(m.gen) })
-    flash(`${m.user.name}님 기수를 수정했습니다.`)
+    flash(`${m.user.name}님을 ${m.gen ? m.gen + '기' : '기수 없음'}로 바꿨습니다.`)
   } catch (e) {
     flash(e.message, true)
+  }
+}
+
+/* 동아리 안에서의 상태. 학적(재학·휴학·졸업)은 사람 전역 값이라 여기서 못 바꾼다
+   — 동아리장이 바꾸면 그 사람의 다른 동아리까지 영향을 받는다 (기획서 §3.1) */
+async function updateMembership(m) {
+  try {
+    const r = await api.clubs.updateMember(clubId.value, m.user.id, { membership: m.membership })
+    m.membership = r.membership
+    flash(`${m.user.name}님을 ${r.membership}으로 바꿨습니다.`)
+  } catch (e) {
+    m.membership = m.membership === 'OB' ? '활동중' : 'OB'   // 되돌린다
+    popup('상태를 바꾸지 못했습니다', e.message, false)
+  }
+}
+
+const removeDialog = ref(null)
+const removeTarget = ref(null)
+
+function openRemove(m) {
+  removeTarget.value = m
+  removeDialog.value?.showModal()
+}
+
+async function confirmRemove() {
+  const m = removeTarget.value
+  try {
+    await api.clubs.removeMember(clubId.value, m.user.id)
+    removeDialog.value?.close()
+    members.value = members.value.filter((x) => x.user.id !== m.user.id)
+    leaveRequests.value = await api.leaveRequests.listForClub(clubId.value)
+    popup('부원을 내보냈습니다', `${m.user.name}님이 동아리에서 제외되었습니다.`)
+  } catch (e) {
+    removeDialog.value?.close()
+    popup('내보내지 못했습니다', e.message, false)
   }
 }
 
@@ -160,9 +218,12 @@ async function saveClubInfo() {
   try {
     const saved = await api.clubs.update(clubId.value, { ...clubEdit })
     club.value = { ...club.value, ...saved }
-    flash('동아리 정보를 저장했습니다.')
+    savedClub.value = snap(clubEdit)
+    popup('동아리 정보를 저장했습니다',
+      `모집 ${clubEdit.recruit_status}` +
+      (clubEdit.current_gen ? ` · 현재 ${clubEdit.current_gen}기` : ''))
   } catch (e) {
-    flash(e.message, true)
+    popup('동아리 정보를 저장하지 못했습니다', e.message, false)
   }
 }
 </script>
@@ -209,20 +270,44 @@ async function saveClubInfo() {
           <input type="checkbox" v-model="formDraft.required" /> 가입폼 작성을 필수로 한다
         </label>
         <ul class="list">
-          <li v-for="(f, i) in formDraft.fields" :key="i" class="field-row">
-            <input v-model="f.key" placeholder="key" class="key" />
-            <input v-model="f.label" placeholder="질문" class="label-input" />
-            <select v-model="f.type">
-              <option value="text">한 줄</option>
-              <option value="textarea">여러 줄</option>
-            </select>
-            <label class="checkline small"><input type="checkbox" v-model="f.required" /> 필수</label>
-            <button class="btn ghost icon" @click="removeField(i)" aria-label="삭제">✕</button>
+          <li v-for="(f, i) in formDraft.fields" :key="i" class="field-card">
+            <div class="field-head">
+              <span class="qno">질문 {{ i + 1 }}</span>
+              <button class="btn ghost icon" @click="removeField(i)" aria-label="질문 삭제">✕</button>
+            </div>
+            <div class="field-grid">
+              <div class="fld">
+                <label :for="`f-label-${i}`">질문 문구</label>
+                <input :id="`f-label-${i}`" v-model="f.label"
+                       placeholder="예: 지원 동기가 무엇인가요?" />
+                <p class="hint">신청자에게 이대로 보입니다.</p>
+              </div>
+              <div class="fld">
+                <label :for="`f-type-${i}`">답변 형식</label>
+                <select :id="`f-type-${i}`" v-model="f.type">
+                  <option value="text">한 줄</option>
+                  <option value="textarea">여러 줄</option>
+                </select>
+              </div>
+              <div class="fld">
+                <label :for="`f-key-${i}`">저장 이름</label>
+                <input :id="`f-key-${i}`" v-model="f.key" placeholder="motive" />
+                <p class="hint">답변을 구분하는 영문 이름. 신청자에게는 안 보입니다.</p>
+              </div>
+              <div class="fld">
+                <label>필수 여부</label>
+                <label class="checkline small">
+                  <input type="checkbox" v-model="f.required" /> 반드시 답해야 함
+                </label>
+              </div>
+            </div>
           </li>
         </ul>
         <div class="actions">
           <button class="btn ghost" @click="addField">질문 추가</button>
-          <button class="btn" @click="saveForm">가입폼 저장</button>
+          <button class="btn" :disabled="!formDirty" @click="saveForm">
+            {{ formDirty ? '가입폼 저장' : '변경사항 없음' }}
+          </button>
         </div>
       </section>
 
@@ -230,24 +315,42 @@ async function saveClubInfo() {
       <section class="card block">
         <h2 class="section-title">부원 관리</h2>
         <ul class="list">
-          <li v-for="m in members" :key="m.user.id" class="row member-row">
-            <div>
-              <p class="card-title">{{ m.user.name }} <span class="sub">· {{ m.user.dept }}</span></p>
-              <p class="sub">{{ m.role }} · {{ m.membership }}</p>
+          <li v-for="m in members" :key="m.user.id" class="member-card">
+            <div class="who">
+              <p class="card-title">
+                {{ m.user.name }}
+                <span v-if="m.role === '동아리장'" class="chip lead">동아리장</span>
+              </p>
+              <p class="sub">
+                {{ m.user.dept }} · 학적 {{ m.academic_status }}
+                <span class="lock" title="학적은 본인 또는 관리자만 바꿉니다">🔒</span>
+              </p>
             </div>
+
+            <div class="ctl">
+              <label :for="`gen-${m.user.id}`">기수</label>
+              <div class="gen-set">
+                <input :id="`gen-${m.user.id}`" class="gen-input" type="number" min="1"
+                       v-model="m.gen" @change="updateGen(m)" placeholder="—" />
+                <span class="unit">기</span>
+              </div>
+            </div>
+
+            <div class="ctl">
+              <label :for="`ms-${m.user.id}`">동아리 상태</label>
+              <select :id="`ms-${m.user.id}`" v-model="m.membership"
+                      :disabled="m.role === '동아리장'"
+                      @change="updateMembership(m)">
+                <option value="활동중">활동중</option>
+                <option value="OB">OB</option>
+              </select>
+            </div>
+
             <div class="actions">
-              <input
-                class="gen-input"
-                type="number"
-                v-model="m.gen"
-                @change="updateGen(m)"
-                placeholder="기수" />
-              <button
-                v-if="m.role !== '동아리장' && m.membership === '활동중'"
-                class="btn ghost"
-                @click="openTransfer(m)">
-                위임
-              </button>
+              <button v-if="m.role !== '동아리장' && m.membership === '활동중'"
+                      class="btn ghost" @click="openTransfer(m)">위임</button>
+              <button v-if="m.role !== '동아리장'"
+                      class="btn ghost danger" @click="openRemove(m)">내보내기</button>
             </div>
           </li>
         </ul>
@@ -291,7 +394,9 @@ async function saveClubInfo() {
           <label>소개</label>
           <textarea v-model="clubEdit.purpose" rows="4" />
         </div>
-        <button class="btn" @click="saveClubInfo">저장</button>
+        <button class="btn" :disabled="!clubDirty" @click="saveClubInfo">
+          {{ clubDirty ? '저장' : '변경사항 없음' }}
+        </button>
       </section>
     </template>
 
@@ -329,6 +434,42 @@ async function saveClubInfo() {
         </div>
       </div>
     </dialog>
+
+    <!-- 부원 내보내기 확인 -->
+    <dialog ref="removeDialog" class="narrow" @click.self="removeDialog.close()">
+      <div class="sheet">
+        <header class="sheet-head">
+          <h2 class="section-title">부원 내보내기</h2>
+          <button class="btn ghost icon" @click="removeDialog.close()" aria-label="닫기">✕</button>
+        </header>
+        <div class="sheet-body">
+          <p class="warn" v-if="removeTarget">
+            {{ removeTarget.user.name }}님을 동아리에서 내보냅니다. 기수·소속 기록이 사라지며
+            되돌릴 수 없습니다. 본인이 다시 가입 신청할 수는 있습니다.
+          </p>
+        </div>
+        <div class="sheet-actions">
+          <button class="btn ghost" @click="removeDialog.close()">취소</button>
+          <button class="btn danger-fill" @click="confirmRemove">내보내기</button>
+        </div>
+      </div>
+    </dialog>
+
+    <!-- 저장 결과 -->
+    <dialog ref="resultDlg" class="narrow" @click.self="resultDlg.close()">
+      <div class="sheet">
+        <header class="sheet-head">
+          <h2 class="section-title">{{ result.ok ? '✓' : '✕' }} {{ result.title }}</h2>
+          <button class="btn ghost icon" @click="resultDlg.close()" aria-label="닫기">✕</button>
+        </header>
+        <div class="sheet-body">
+          <p :class="result.ok ? 'privacy' : 'warn'">{{ result.detail }}</p>
+        </div>
+        <div class="sheet-actions">
+          <button class="btn" @click="resultDlg.close()">확인</button>
+        </div>
+      </div>
+    </dialog>
   </section>
 </template>
 
@@ -344,8 +485,35 @@ async function saveClubInfo() {
 .checkline { display: flex; align-items: center; gap: 8px; font-weight: 400; margin: 0; }
 .checkline.small { font-size: 12.5px; }
 .checkline input { width: auto; }
-.field-row { display: grid; grid-template-columns: 100px 1fr 110px auto auto; gap: 8px; align-items: center; }
-.gen-input { width: 72px; }
+/* 가입폼 — 어떤 값을 넣는 칸인지 라벨로 드러낸다 */
+.field-card { border: var(--border); border-radius: 14px; padding: 14px 16px; background: var(--bg); }
+.field-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.qno { font-size: 11px; font-weight: 700; letter-spacing: .12em; color: var(--dim); }
+.field-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 12px 16px; }
+.field-grid .fld:nth-child(3) { grid-column: 1; }
+.fld label { display: block; font-size: 12.5px; font-weight: 700; margin-bottom: 5px; }
+.fld .hint { margin-top: 4px; }
+
+/* 부원 — 기수를 '바꾸는 칸'으로 읽히게 라벨과 단위를 붙인다 */
+.member-card {
+  display: grid; grid-template-columns: 1fr auto auto auto; gap: 16px;
+  align-items: end; padding: 14px 0; border-bottom: 1px solid var(--line);
+}
+.member-card:last-child { border-bottom: none; }
+.member-card .who { min-width: 0; }
+.member-card .ctl label { display: block; font-size: 11.5px; font-weight: 700; color: var(--dim); margin-bottom: 5px; }
+.gen-set { display: flex; align-items: center; gap: 6px; }
+.gen-input { width: 68px; text-align: center; }
+.gen-set .unit { font-size: 13px; color: var(--dim); }
+.member-card select { width: auto; }
+.chip.lead { background: var(--accent); color: var(--onAccent); margin-left: 6px; }
+.lock { font-size: 11px; opacity: .55; }
+
+/* 취소·삭제 같은 부정 동작은 붉은 계열로 (디자인 기획 §4) */
+.btn.danger { border-color: var(--dangerLine); color: var(--dangerInk); }
+.btn.danger:hover { background: var(--dangerBg); }
+.btn.danger-fill { background: var(--dangerInk); color: var(--card); border-color: var(--dangerInk); }
+
 .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 .row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
 .sheet-head {

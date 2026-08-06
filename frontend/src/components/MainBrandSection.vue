@@ -62,8 +62,6 @@ const val = (k) => {
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
   text-align: center; padding: 0 20px;
   background: var(--bg);
-  box-shadow: 0 10px 24px -18px var(--shadow);
-  border-bottom: 1px solid var(--line);
 }
 .title h1 {
   margin: 0;
