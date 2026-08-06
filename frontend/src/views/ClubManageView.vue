@@ -4,6 +4,7 @@
  */
 import { computed, onMounted, reactive, ref } from 'vue'
 import api, { ApiError } from '../api'
+import { gradeLabel } from '../content/grade'
 
 const props = defineProps({ id: { type: String, required: true } })
 const clubId = computed(() => Number(props.id))
@@ -57,7 +58,7 @@ async function loadAll() {
     ])
     club.value = c
     formDraft.required = form.required
-    formDraft.fields = form.fields
+    formDraft.fields = normalizeKeys(form.fields)
     joinRequests.value = reqs
     members.value = mem
     leaveRequests.value = leaves
@@ -114,13 +115,44 @@ async function confirmReject() {
 
 // --- 가입폼 --------------------------------------------------------
 
+/* key 는 답변 JSON 의 키다. 화면에 보이는 글은 '질문'(label)이 맡으므로 사람이 정할
+   이유가 없다. 한글이나 공백이 들어가면 답변을 다룰 때 깨지므로 자동으로 붙인다. */
+const KEY_RE = /^[a-zA-Z][a-zA-Z0-9_]{0,29}$/
+
+function nextKey() {
+  const used = new Set(formDraft.fields.map((f) => f.key))
+  let n = formDraft.fields.length + 1
+  while (used.has(`q${n}`)) n += 1
+  return `q${n}`
+}
+
+/* 예전에 손으로 넣은 한글 key 가 남아 있을 수 있다 — 불러올 때 조용히 고친다 */
+function normalizeKeys(fields) {
+  const out = []
+  for (const f of fields) {
+    const ok = KEY_RE.test((f.key ?? '').trim())
+    out.push({ ...f, key: ok ? f.key.trim() : `q${out.length + 1}` })
+  }
+  return out
+}
+
+/* 답변은 key 로 저장된다. 동아리장에게는 질문 문구로 보여준다 —
+   'q1: 짱' 은 읽을 수 없다. 폼이 바뀌어 없어진 질문이면 key 를 그대로 쓴다 */
+const questionOf = computed(() => {
+  const map = {}
+  for (const f of formDraft.fields) map[f.key] = f.label?.trim() || f.key
+  return map
+})
+
 function addField() {
-  formDraft.fields.push({ key: `q${formDraft.fields.length + 1}`, label: '', type: 'text', required: false })
+  formDraft.fields.push({ key: nextKey(), label: '', type: 'text', required: false })
 }
 function removeField(i) {
   formDraft.fields.splice(i, 1)
 }
+
 async function saveForm() {
+  formDraft.fields = normalizeKeys(formDraft.fields)
   try {
     const saved = await api.joinForm.put(clubId.value, formDraft)
     formDraft.required = saved.required
@@ -251,9 +283,12 @@ async function saveClubInfo() {
           <li v-for="r in joinRequests" :key="r.id" class="row">
             <div>
               <p class="card-title">{{ r.name }} <span class="sub">· {{ r.dept }}<template v-if="r.grade"> · {{ gradeLabel(r.grade) }}</template></span></p>
-              <p v-if="Object.keys(r.answers ?? {}).length" class="sub answers">
-                <span v-for="(v, k) in r.answers" :key="k">{{ k }}: {{ v }}</span>
-              </p>
+              <dl v-if="Object.keys(r.answers ?? {}).length" class="answers">
+                <template v-for="(v, k) in r.answers" :key="k">
+                  <dt>{{ questionOf[k] ?? k }}</dt>
+                  <dd>{{ v || '—' }}</dd>
+                </template>
+              </dl>
             </div>
             <div class="actions">
               <button class="btn ghost" @click="openReject(r)">거절</button>
@@ -288,11 +323,6 @@ async function saveClubInfo() {
                   <option value="text">한 줄</option>
                   <option value="textarea">여러 줄</option>
                 </select>
-              </div>
-              <div class="fld">
-                <label :for="`f-key-${i}`">저장 이름</label>
-                <input :id="`f-key-${i}`" v-model="f.key" placeholder="motive" />
-                <p class="hint">답변을 구분하는 영문 이름. 신청자에게는 안 보입니다.</p>
               </div>
               <div class="fld">
                 <label>필수 여부</label>
@@ -474,6 +504,9 @@ async function saveClubInfo() {
 </template>
 
 <style scoped>
+/* 저장 이름이 규칙에 어긋나면 안내를 붉게 — 저장 버튼을 누르기 전에 알아채게 */
+.hint.bad { color: var(--dangerInk); }
+
 .page { padding: 56px 0 140px; }
 .flash { margin: 16px 0; }
 .block { padding: 22px; margin-top: 18px; display: flex; flex-direction: column; gap: 14px; }
@@ -481,7 +514,9 @@ async function saveClubInfo() {
 .row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--line); }
 .row:last-child { border-bottom: none; }
 .actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
-.answers span { display: block; }
+.answers { margin: 6px 0 0; display: grid; grid-template-columns: auto 1fr; gap: 3px 10px; }
+.answers dt { font-size: 12px; font-weight: 700; color: var(--dim); white-space: nowrap; }
+.answers dd { margin: 0; font-size: 13px; line-height: 1.6; overflow-wrap: anywhere; }
 .checkline { display: flex; align-items: center; gap: 8px; font-weight: 400; margin: 0; }
 .checkline.small { font-size: 12.5px; }
 .checkline input { width: auto; }

@@ -2,7 +2,7 @@
 
 from datetime import date
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Response
 from pydantic import BaseModel
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
@@ -10,7 +10,17 @@ from sqlalchemy.orm import Session
 from .. import depts, enums, errors, serializers
 from ..db import get_db
 from ..deps import admin_user, verified_user
-from ..models import Club, ClubApplication, ClubMember, Post, User
+from ..models import (
+    Club,
+    ClubApplication,
+    ClubMember,
+    JoinForm,
+    JoinRequest,
+    LeaveRequest,
+    Like,
+    Post,
+    User,
+)
 from ..routers.auth import ALLOWED_DOMAINS
 from ..services import mailer
 
@@ -164,6 +174,40 @@ def admin_update_club(
 
     db.commit()
     return {"id": club.id, "status": club.status}
+
+
+@router.delete("/admin/clubs/{club_id}", status_code=204)
+def delete_club(club_id: int, admin: User = Depends(admin_user), db: Session = Depends(get_db)):
+    """동아리를 지운다. **되돌릴 수 없다.**
+
+    보통은 '보관'(status)으로 충분하다 — 기록이 남고 되돌릴 수 있기 때문이다.
+    삭제는 잘못 만들어진 동아리를 치우는 용도다. 그래서 딸린 것을 전부 함께 지운다:
+    소속·가입/탈퇴 신청·가입폼·활동 글과 그 글의 좋아요.
+
+    개설 신청 이력(club_applications)은 남긴다 — 누가 언제 신청했는지는 동아리와
+    별개의 기록이다.
+    """
+    club = db.get(Club, club_id)
+    if club is None:
+        raise errors.not_found("동아리를 찾을 수 없습니다.")
+
+    post_ids = [
+        pid for (pid,) in db.execute(select(Post.id).where(Post.club_id == club_id)).all()
+    ]
+    if post_ids:
+        db.query(Like).filter(Like.post_id.in_(post_ids)).delete(synchronize_session=False)
+    for model, cond in (
+        (Post, Post.club_id == club_id),
+        (JoinRequest, JoinRequest.club_id == club_id),
+        (LeaveRequest, LeaveRequest.club_id == club_id),
+        (JoinForm, JoinForm.club_id == club_id),
+        (ClubMember, ClubMember.club_id == club_id),
+    ):
+        db.query(model).filter(cond).delete(synchronize_session=False)
+
+    db.delete(club)
+    db.commit()
+    return Response(status_code=204)
 
 
 @router.get("/admin/clubs")

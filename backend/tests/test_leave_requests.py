@@ -61,8 +61,10 @@ def test_list_leave_requests_auto_approves_expired(client, make_user, make_club,
 
     r = client.get(f"/api/clubs/{club.id}/leave-requests", cookies=auth_cookie(leader))
     assert r.status_code == 200
-    items = r.json()
-    assert any(i["id"] == old.id and i["status"] == "승인" for i in items)
+    # 자동 승인된 건은 처리가 끝났으므로 목록에서 빠진다 (목록은 '할 일'만 담는다)
+    assert all(i["id"] != old.id for i in r.json())
+    db.refresh(old)
+    assert old.status == enums.REQ_APPROVED
 
     member = db.get(ClubMember, {"user_id": user.id, "club_id": club.id})
     assert member is None
