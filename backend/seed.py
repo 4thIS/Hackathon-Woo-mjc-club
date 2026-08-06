@@ -20,7 +20,18 @@ from sqlalchemy import select
 
 from app import enums
 from app.db import SessionLocal, create_all, engine
-from app.models import Base, Club, ClubMember, Like, Post, User
+from app.models import (
+    Base,
+    Club,
+    ClubApplication,
+    ClubMember,
+    JoinForm,
+    JoinRequest,
+    LeaveRequest,
+    Like,
+    Post,
+    User,
+)
 from app.security import hash_password
 
 PW = hash_password("test1234")
@@ -49,7 +60,14 @@ USERS = [
     u("26011234", "신입생", "컴퓨터공학과"),
     u("26011235", "김서연", "간호학과"),
     u("19010001", "졸업생", "컴퓨터공학과", status=enums.ACADEMIC_GRADUATED),
+    # 어느 동아리에도 속하지 않은 지원자들 — 시연에서 '신청자 목록 → 승인' 을 보여주려면
+    # 심사중인 신청이 미리 쌓여 있어야 한다 (시연 시나리오 1:30)
+    u("26011240", "김도윤", "전기공학과"),
+    u("26011241", "이서준", "경영학과"),
+    u("26011242", "최유진", "간호학과"),
 ]
+
+APPLICANTS = ["26011240", "26011241", "26011242"]
 
 CLUBS = [
     dict(name="필름사진동아리 그늘", category="취미·교양", founded_year=2014, advisor="김지훈",
@@ -119,6 +137,44 @@ POSTS = [
     (7, 22, "정기공연 <두 번째 문> 무대 철수",
      "3회 공연을 마치고 무대를 정리했습니다. 누적 관객은 210명입니다.",
      ["공연"], True),
+    # --- 아래는 T7 보강분 — 어느 동아리를 눌러도 타임라인이 비지 않게 한다 ---
+    (2, 55, "신입 오디션 결과 발표",
+     "지원 21명 중 6명이 합격했습니다. 파트별로 베이스 2 · 테너 2 · 소프라노 2 입니다.",
+     ["모집", "오디션"], True),
+    (3, 34, "우천으로 순연된 2차전",
+     "비로 경기가 밀려 다음 주 같은 시간에 다시 치릅니다. 훈련은 실내 체육관에서 이어갑니다.",
+     ["리그"], True),
+    (4, 47, "연탄 나눔 봉사 300장",
+     "지역 복지관과 함께 연탄 300장을 배달했습니다. 11명이 참여했습니다.",
+     ["봉사", "나눔"], True),
+    (5, 9, "보드게임 나이트 — 40명이 다녀갔습니다",
+     "학생회관 305호를 개방해 하루 동안 자유 플레이를 진행했습니다. 준비한 게임은 22종입니다.",
+     ["행사", "개방"], True),
+    (5, 44, "룰 해설 세미나: 협력형 게임의 구조",
+     "협력형 보드게임이 어떻게 난이도를 조절하는지 사례 세 가지로 뜯어봤습니다.",
+     ["세미나"], True),
+    (6, 6, "본선 진출 확정",
+     "예선 통과 후 보완한 라인 인식 코드로 완주 시간을 18초 줄였습니다.",
+     ["대회", "로봇"], True),
+    (7, 58, "신작 대본 리딩 1회차",
+     "다음 정기공연 대본 초고를 함께 읽었습니다. 배역은 다음 주에 정합니다.",
+     ["연습"], True),
+    (1, 3, "알고리즘 스터디 신규 모집 안내",
+     "2학기 스터디를 새로 엽니다. 주 1회 2시간, 초급/중급 두 트랙으로 나눠 진행합니다.",
+     ["모집", "스터디"], True),
+]
+
+# 가입폼이 있는 동아리 — 신청 모달에 폼이 렌더되는 걸 시연에서 보여준다 (기획서 §5.3)
+JOIN_FORM_FIELDS = [
+    {"key": "motive", "label": "지원 동기", "type": "textarea", "required": True},
+    {"key": "camera", "label": "가지고 있는 카메라가 있나요?", "type": "text", "required": False},
+]
+
+# 심사중인 가입 신청 — (지원자 학번, 동아리 index, 폼 답변)
+PENDING_JOINS = [
+    ("26011240", 0, {"motive": "필름 사진을 배우고 싶어서 지원합니다.", "camera": "없습니다"}),
+    ("26011241", 0, {"motive": "동아리 전시를 보고 관심이 생겼습니다.", "camera": "펜탁스 ME"}),
+    ("26011242", 1, {}),
 ]
 
 
@@ -181,8 +237,28 @@ def main() -> None:
                 if i % 3 == 0:
                     db.add(Like(user_id="26011235", post_id=p.id))
 
+        # --- 시연용 심사 대기 건 (구현계획 T7 — 빈 화면 금지) -----------------
+        db.add(JoinForm(club_id=clubs[0].id, fields=JOIN_FORM_FIELDS, required=True))
+
+        for uid, club_idx, answers in PENDING_JOINS:
+            db.add(JoinRequest(user_id=uid, club_id=clubs[club_idx].id, form_answer=answers))
+
+        # 관리자 승인 장면용
+        db.add(ClubApplication(
+            applicant_id="26011240",
+            name="독서토론회 책갈피",
+            category="학술·전공",
+            founded_year=2026,
+            purpose="한 달에 한 권을 정해 읽고 토론합니다. 학기말에 서평집을 냅니다.",
+            advisor="정민석",
+        ))
+
+        # 동아리장 화면의 탈퇴 요청 목록도 비지 않게 한다
+        db.add(LeaveRequest(user_id="26011235", club_id=clubs[2].id))
+
         db.commit()
         print(f"완료 — 유저 {len(USERS)} · 동아리 {len(clubs)} · 활동글 {len(posts)}")
+        print(f"        심사중 가입신청 {len(PENDING_JOINS)} · 개설신청 1 · 탈퇴요청 1 · 가입폼 1")
         print("데모 계정: 26011234@mjc.ac.kr / test1234 (학생), 24010001@mjc.ac.kr / test1234 (동아리장)")
         print("관리자:   00000000@mjc.ac.kr / test1234")
     finally:
