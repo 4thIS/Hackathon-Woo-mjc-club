@@ -107,7 +107,7 @@ def test_verify_rejects_garbage_token(client):
     ("patch", "code"),
     [
         ({"email": "2026261234@gmail.com"}, "INVALID_EMAIL_DOMAIN"),
-        ({"student_id": "1234567890"}, "EMAIL_ID_MISMATCH"),  # 이메일 로컬파트와 불일치
+        ({"student_id": "12345"}, "INVALID_STUDENT_ID"),  # 10자리가 아님
         ({"password": "short"}, "WEAK_PASSWORD"),
         ({"gender": "기타"}, "INVALID_INPUT"),
     ],
@@ -116,6 +116,18 @@ def test_signup_input_rules(client, account, patch, code):
     r = client.post("/api/auth/signup", json={**account, **patch})
     assert r.status_code == 400
     assert r.json()["detail"]["code"] == code
+
+
+def test_email_local_part_need_not_match_student_id(client, account):
+    """학교 메일 주소가 학번과 다른 계정이 있다 — 둘을 따로 받는다."""
+    r = client.post("/api/auth/signup", json={**account, "email": "hongkildong@mjc.ac.kr"})
+    assert r.status_code == 201
+    assert r.json()["student_id"] == account["student_id"]
+
+    login = client.post("/api/auth/login",
+                        json={"email": "hongkildong@mjc.ac.kr", "password": account["password"]})
+    assert login.status_code == 200
+    assert login.json()["id"] == account["student_id"]
 
 
 def test_same_student_id_on_other_domain_is_blocked(client, account):

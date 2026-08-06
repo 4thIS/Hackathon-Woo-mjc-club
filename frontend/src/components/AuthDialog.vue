@@ -23,11 +23,16 @@ const done = ref(null)            // 가입 완료 후 인증 안내 {email, ema
 
 const login = reactive({ email: '', password: '' })
 const su = reactive({
-  studentId: '', domain: DOMAINS[0], password: '', password2: '',
+  studentId: '', mailLocal: '', domain: DOMAINS[0], password: '', password2: '',
   name: '', dept: '', grade: 1, birth: '', gender: '남',
 })
 
-const suEmail = computed(() => (su.studentId ? `${su.studentId}@${su.domain}` : ''))
+/* 학번과 메일 주소는 별개다 — 학번이 곧 주소인 계정이 많을 뿐이라
+ * 메일 칸을 비워두면 학번으로 채워준다. */
+const suEmail = computed(() => {
+  const local = su.mailLocal.trim() || su.studentId
+  return local ? `${local}@${su.domain}` : ''
+})
 
 function open(which = 'login') {
   tab.value = which
@@ -159,17 +164,24 @@ async function resend() {
         <template v-else>
           <div class="fld">
             <label for="su-sid">학번<span class="req">*</span></label>
+            <input id="su-sid" v-model="su.studentId" inputmode="numeric" pattern="[0-9]{10}"
+                   maxlength="10" placeholder="2022261026" required>
+            <p class="hint">10자리 숫자입니다. 계정 식별자라 가입 후에는 바꿀 수 없습니다.</p>
+          </div>
+
+          <div class="fld">
+            <label for="su-mail">학교 이메일<span class="req">*</span></label>
             <div class="mail">
-              <input id="su-sid" v-model="su.studentId" inputmode="numeric" pattern="[0-9]{10}"
-                     maxlength="10" placeholder="2022261026" required>
+              <input id="su-mail" v-model="su.mailLocal" autocomplete="username"
+                     :placeholder="su.studentId || '2022261026'">
               <span class="at">@</span>
               <select v-model="su.domain" aria-label="이메일 도메인">
                 <option v-for="d in DOMAINS" :key="d" :value="d">{{ d }}</option>
               </select>
             </div>
             <p class="hint">
-              학번은 10자리 숫자입니다. 학번이 곧 이메일 주소이며,
-              도메인이 달라도 한 학번으로 한 번만 가입됩니다.
+              로그인에 쓰는 주소입니다. 비워두면 학번으로 만듭니다 —
+              주소가 학번과 달라도 됩니다.
             </p>
           </div>
 

@@ -166,7 +166,7 @@ def issue_verification(db: Session, user: User) -> bool:
 @router.post("/auth/signup", status_code=201)
 def signup(body: SignupIn, db: Session = Depends(get_db)):
     email = body.email.strip().lower()
-    local, _, domain = email.partition("@")
+    _, _, domain = email.partition("@")
 
     if domain not in ALLOWED_DOMAINS:
         raise errors.ApiError(
@@ -176,8 +176,9 @@ def signup(body: SignupIn, db: Session = Depends(get_db)):
         raise errors.ApiError(
             400, "INVALID_STUDENT_ID", f"학번은 숫자 {STUDENT_ID_LEN}자리입니다."
         )
-    if local != body.student_id:
-        raise errors.ApiError(400, "EMAIL_ID_MISMATCH", "이메일 주소와 학번이 일치하지 않습니다.")
+    # 이메일 로컬파트가 학번과 같아야 한다는 제약은 두지 않는다 — 학교 메일 주소가
+    # 학번과 다른 계정(별칭·구계정)이 실제로 있다. 학번은 PK 로, 이메일은 유니크로
+    # 각각 중복만 막으면 충분하다.
     if len(body.password) < 8:
         raise errors.ApiError(400, "WEAK_PASSWORD", "비밀번호는 8자 이상이어야 합니다.")
     if body.gender not in enums.GENDERS:
