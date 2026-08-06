@@ -5,9 +5,11 @@
  */
 import { onMounted, ref } from 'vue'
 import api from '../api'
+import AdminClubPanel from '../components/AdminClubPanel.vue'
 import AdminUserPanel from '../components/AdminUserPanel.vue'
 
-const tab = ref('applications')   // applications | users
+const tab = ref('applications')   // applications | clubs | users
+const TITLES = { applications: '동아리 개설 신청', clubs: '동아리 관리', users: '유저 관리' }
 
 const statusFilter = ref('심사중')
 const applications = ref([])
@@ -67,12 +69,16 @@ async function confirmReject() {
 <template>
   <section class="container page">
     <p class="eyebrow">관리자</p>
-    <h1 class="page-title">{{ tab === 'users' ? '유저 관리' : '동아리 개설 신청' }}</h1>
+    <h1 class="page-title">{{ TITLES[tab] }}</h1>
 
     <div class="tabs" role="tablist">
       <button class="tab" :class="{ on: tab === 'applications' }" role="tab"
               :aria-selected="tab === 'applications'" @click="tab = 'applications'">
         개설 신청
+      </button>
+      <button class="tab" :class="{ on: tab === 'clubs' }" role="tab"
+              :aria-selected="tab === 'clubs'" @click="tab = 'clubs'">
+        동아리
       </button>
       <button class="tab" :class="{ on: tab === 'users' }" role="tab"
               :aria-selected="tab === 'users'" @click="tab = 'users'">
@@ -80,7 +86,8 @@ async function confirmReject() {
       </button>
     </div>
 
-    <AdminUserPanel v-if="tab === 'users'" />
+    <AdminClubPanel v-if="tab === 'clubs'" />
+    <AdminUserPanel v-else-if="tab === 'users'" />
 
     <template v-else>
     <div class="filter">

@@ -122,6 +122,7 @@ export const api = {
     updateClub: (id, payload) => patch(`/admin/clubs/${id}`, payload),
     users: (params) => get('/admin/users' + qs(params)),
     updateUser: (id, payload) => patch(`/admin/users/${id}`, payload),
+    clubs: (params) => get('/admin/clubs' + qs(params)),
   },
 
   // --- 활동 글 (T5 · §6) ---
