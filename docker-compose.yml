@@ -1,0 +1,55 @@
+# ★ 계약 파일 — 소유: PM (CLAUDE.md §계약)
+#
+# 개발:   docker compose up -d db          (Postgres만 도커, 앱은 로컬에서 --reload)
+# 최종:   docker compose up --build        (전체. 시연 직전 확인용)
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-mjc}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-mjc}
+      POSTGRES_DB: ${POSTGRES_DB:-mjcclub}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-mjc} -d ${POSTGRES_DB:-mjcclub}"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  backend:
+    build: ./backend
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-mjc}:${POSTGRES_PASSWORD:-mjc}@db:5432/${POSTGRES_DB:-mjcclub}
+      SECRET_KEY: ${SECRET_KEY:-dev-only-change-me}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:8080}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:8080,http://localhost:5173}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM: ${SMTP_FROM:-no-reply@mjc.ac.kr}
+      AI_BASE_URL: ${AI_BASE_URL:-https://factchat-cloud.mindlogic.ai/v1/gateway}
+      AI_MODEL: ${AI_MODEL:-gpt-4o-mini}
+      DEMO_FALLBACK: ${DEMO_FALLBACK:-0}
+    ports:
+      - "8000:8000"
+    volumes:
+      - uploads:/app/uploads
+
+  frontend:
+    build: ./frontend
+    depends_on:
+      - backend
+    ports:
+      - "8080:80"
+
+volumes:
+  pgdata:
+  uploads:

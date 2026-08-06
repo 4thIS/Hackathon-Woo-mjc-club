@@ -1,0 +1,29 @@
+# 비밀키·환경변수 — .env.example 만 커밋한다 (CLAUDE.md §금지)
+.env
+.env.local
+*.env
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+
+# Node
+node_modules/
+dist/
+.vite/
+
+# 업로드된 사진 (로컬 저장)
+backend/uploads/
+
+# OS · 에디터
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Claude Code 워크트리
+.claude/worktrees/

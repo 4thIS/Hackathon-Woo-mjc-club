@@ -1,0 +1,196 @@
+/* ★ 디자인 토큰 — 프론트엔드 디자인 기획 §2~§4
+ *
+ * 컴포넌트에 hex 하드코딩 금지. 새 색·새 간격·새 모서리값을 만들지 않는다.
+ * 테마는 <html data-theme="light|dark"> 로 전환한다.
+ */
+
+:root {
+  --bg: #FBFAFF;
+  --card: #FFFFFF;
+  --line: #E5E1F6;
+  --chip: #EFECFC;
+  --ink: #453A6E;
+  --dim: #948DB3;
+  --accent: #7C6BC4;
+  --onAccent: #FFFFFF;
+  --band: #C3B9EC;
+  --scrim: rgba(52, 42, 90, .44);
+
+  --warnBg: #FBF0E4;
+  --warnLine: #EDD6B8;
+  --warnInk: #8A6633;
+
+  --shadow: rgba(80, 66, 140, .10);
+  --shadowUp: rgba(80, 66, 140, .18);
+
+  /* 카테고리 5색 — 배지·썸네일 그라데이션·아카이브 점에 공통 사용 */
+  --cat-academic-a: #E4DFFA;  --cat-academic-b: #CFC6F2;
+  --cat-art-a:      #F8E1F2;  --cat-art-b:      #EFC9E2;
+  --cat-sports-a:   #DCEBF9;  --cat-sports-b:   #C3DBF1;
+  --cat-volunteer-a:#FBE7DE;  --cat-volunteer-b:#F3D0BF;
+  --cat-hobby-a:    #E3F0E2;  --cat-hobby-b:    #CBE0C9;
+
+  /* 형태 — §4 */
+  --r-card: 20px;
+  --r-sheet: 22px;
+  --r-btn: 11px;
+  --r-input: 12px;
+  --r-chip: 999px;
+  --border: 1.5px solid var(--line);
+  --header-h: 64px;
+
+  --t-hover: .16s ease;
+  --t-enter: .62s ease;
+}
+
+:root[data-theme="dark"] {
+  --bg: #16152A;
+  --card: #211F3B;
+  --line: #322F56;
+  --chip: #2C2950;
+  --ink: #E8E5FA;
+  --dim: #9A94C2;
+  --accent: #A08FF2;
+  --onAccent: #1A1830;
+  --band: #544D8C;
+  --scrim: rgba(6, 5, 14, .66);
+
+  --warnBg: #3A2E22;
+  --warnLine: #57432C;
+  --warnInk: #E7C48C;
+
+  --shadow: rgba(0, 0, 0, .30);
+  --shadowUp: rgba(0, 0, 0, .44);
+
+  --cat-academic-a: #3E3872;  --cat-academic-b: #2B2752;
+  --cat-art-a:      #4E3560;  --cat-art-b:      #362342;
+  --cat-sports-a:   #2E4266;  --cat-sports-b:   #1F2E4A;
+  --cat-volunteer-a:#523A30;  --cat-volunteer-b:#382720;
+  --cat-hobby-a:    #314E41;  --cat-hobby-b:    #21352C;
+}
+
+/* --- 기본 --------------------------------------------------------- */
+
+* { box-sizing: border-box; }
+
+html {
+  scroll-padding-top: var(--header-h);
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: Pretendard, system-ui, "Malgun Gothic", sans-serif;
+  font-size: 15px;
+  line-height: 1.75;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* 숫자는 전부 tabular — §3 */
+body { font-variant-numeric: tabular-nums; }
+
+a { color: inherit; text-decoration: none; }
+
+/* 포커스 링은 절대 지우지 않는다 — §4 */
+:focus-visible {
+  outline: 2.5px solid var(--accent);
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+}
+
+/* --- 타이포 ------------------------------------------------------- */
+
+.page-title { font-size: clamp(30px, 5vw, 52px); font-weight: 800; letter-spacing: -.03em; line-height: 1.15; }
+.brand-title { font-weight: 400; }              /* 브랜드 타이틀만 400 — 스케치 확정 */
+.section-title { font-size: 21px; font-weight: 700; letter-spacing: -.025em; }
+.card-title { font-size: 15px; font-weight: 700; }
+.sub { font-size: 12.5px; color: var(--dim); }
+.eyebrow { font-size: 11px; font-weight: 700; letter-spacing: .13em; color: var(--dim); text-transform: uppercase; }
+
+/* --- 버튼 3종 (이 외 변형 금지) — §4 ------------------------------ */
+
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  height: 40px; padding: 0 16px;
+  border: 1.5px solid transparent; border-radius: var(--r-btn);
+  background: var(--accent); color: var(--onAccent);
+  font: inherit; font-weight: 700;
+  cursor: pointer;
+  transition: background var(--t-hover), transform var(--t-hover), box-shadow var(--t-hover);
+}
+.btn:hover { transform: translateY(-1px); box-shadow: 0 6px 18px var(--shadow); }
+.btn:disabled { opacity: .45; cursor: not-allowed; transform: none; box-shadow: none; }
+
+.btn.ghost { background: transparent; color: var(--ink); border-color: var(--line); }
+.btn.icon { width: 36px; height: 36px; padding: 0; border-radius: 10px; }
+
+/* --- 카드·칩·입력 -------------------------------------------------- */
+
+.card {
+  background: var(--card);
+  border: var(--border);
+  border-radius: var(--r-card);
+  box-shadow: 0 5px 16px var(--shadow);
+  transition: box-shadow var(--t-hover), transform var(--t-hover);
+}
+.card:hover { box-shadow: 0 12px 34px var(--shadowUp); transform: translateY(-2px); }
+
+.chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 11px; border-radius: var(--r-chip);
+  background: var(--chip); color: var(--ink);
+  font-size: 12.5px; font-weight: 700;
+}
+
+label { display: block; font-size: 13px; font-weight: 700; margin-bottom: 6px; }
+label .req { color: var(--accent); }
+
+input, textarea, select {
+  width: 100%; padding: 10px 12px;
+  border: var(--border); border-radius: var(--r-input);
+  background: var(--card); color: var(--ink);
+  font: inherit;
+  transition: border-color var(--t-hover);
+}
+input:focus, textarea:focus, select:focus { border-color: var(--accent); outline: none; }
+.hint { font-size: 12px; color: var(--dim); margin-top: 5px; }
+
+/* --- 안내 박스 ----------------------------------------------------- */
+
+.warn {
+  padding: 12px 14px;
+  background: var(--warnBg);
+  border: 1.5px solid var(--warnLine);
+  border-radius: 14px;
+  color: var(--warnInk);
+  font-size: 13.5px;
+}
+
+.privacy {
+  padding: 12px 14px;
+  background: var(--chip);
+  border-radius: 14px;
+  font-size: 13px;
+  color: var(--dim);
+}
+
+/* --- 모달 — 네이티브 <dialog> — §5.3 ------------------------------ */
+
+dialog {
+  width: min(560px, calc(100vw - 32px));
+  padding: 0;
+  border: var(--border);
+  border-radius: var(--r-sheet);
+  background: var(--card);
+  color: var(--ink);
+}
+dialog.narrow { width: min(420px, calc(100vw - 32px)); }
+dialog::backdrop { background: var(--scrim); }
+
+/* --- 레이아웃 ------------------------------------------------------ */
+
+.container { width: min(1180px, calc(100vw - 40px)); margin: 0 auto; }
