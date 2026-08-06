@@ -62,3 +62,35 @@ def test_raises_on_unexpected_headers():
     bad = SAMPLE.replace("<th>동아리명</th>", "<th>단체명</th>")
     with pytest.raises(RuntimeError, match="컬럼 구성이 다릅니다"):
         parse_clubs(bad)
+
+
+def test_raises_when_data_row_precedes_category():
+    """분야 th 없이 데이터 행으로 시작하면, 그 행을 조용히 버리지 않고 즉시 올린다."""
+    broken = (
+        '<table class="tbl_type01">\n'
+        "  <thead><tr><th>분야</th><th>동아리명</th><th>창립년도</th>"
+        "<th>목적</th><th>주요사업</th></tr></thead>\n"
+        "  <tbody>\n"
+        "    <tr><td>T.M.I.M</td><td>2011</td>"
+        "<td>찬양 공연 및 봉사 활동</td><td>각종 행사 공연</td></tr>\n"
+        '    <tr><th rowspan="1">학술(1개)</th><td>고리사진부</td><td>1979</td>'
+        "<td>사진촬영, 작품연구</td><td>작품전시회 개최</td></tr>\n"
+        "  </tbody>\n"
+        "</table>\n"
+    )
+    with pytest.raises(RuntimeError, match="분야 칸을 만나기 전에 데이터 행이 나왔습니다"):
+        parse_clubs(broken)
+
+
+def test_raises_on_unknown_category():
+    unknown = SAMPLE.replace("학술(1개)", "환경(1개)")
+    with pytest.raises(RuntimeError, match="매핑에 없는 분야입니다"):
+        parse_clubs(unknown)
+
+
+def test_raises_on_non_numeric_founded_year_with_club_name():
+    bad_year = SAMPLE.replace(
+        "<td>고리사진부</td><td>1979</td>", "<td>고리사진부</td><td>미상</td>"
+    )
+    with pytest.raises(RuntimeError, match="고리사진부"):
+        parse_clubs(bad_year)

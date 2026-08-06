@@ -66,16 +66,31 @@ def parse_clubs(html: str) -> list[dict]:
         if cells and cells[0].name == "th":
             source_category = _COUNT_SUFFIX.sub("", _clean(cells[0].get_text())).strip()
             cells = cells[1:]
-        if source_category is None or len(cells) < 4:
+        if len(cells) < 4:
             continue
+        if source_category is None:
+            raise RuntimeError(
+                "분야 칸을 만나기 전에 데이터 행이 나왔습니다 — 표 구조가 바뀌었을 수 있습니다: "
+                f"{[_clean(c.get_text()) for c in cells[:4]]}"
+            )
 
         name, year, purpose, activities = (_clean(c.get_text()) for c in cells[:4])
+        if source_category not in CATEGORY_MAP:
+            raise RuntimeError(
+                f"'{source_category}' 는 매핑에 없는 분야입니다 — CATEGORY_MAP 을 확인하세요"
+            )
+        try:
+            founded_year = int(year)
+        except ValueError as e:
+            raise RuntimeError(
+                f"'{name}' 의 창립년도 값이 숫자가 아닙니다: {year!r}"
+            ) from e
         rows.append(
             {
                 "name": name,
-                "category": CATEGORY_MAP.get(source_category, "취미·교양"),
+                "category": CATEGORY_MAP[source_category],
                 "source_category": source_category,
-                "founded_year": int(year),
+                "founded_year": founded_year,
                 "purpose": purpose,
                 "main_activities": activities,
             }
