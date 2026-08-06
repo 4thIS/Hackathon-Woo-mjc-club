@@ -250,7 +250,7 @@ async function saveClubInfo() {
         <ul v-else class="list">
           <li v-for="r in joinRequests" :key="r.id" class="row">
             <div>
-              <p class="card-title">{{ r.name }} <span class="sub">· {{ r.dept }}<template v-if="r.grade"> · {{ r.grade }}학년</template></span></p>
+              <p class="card-title">{{ r.name }} <span class="sub">· {{ r.dept }}<template v-if="r.grade"> · {{ gradeLabel(r.grade) }}</template></span></p>
               <p v-if="Object.keys(r.answers ?? {}).length" class="sub answers">
                 <span v-for="(v, k) in r.answers" :key="k">{{ k }}: {{ v }}</span>
               </p>

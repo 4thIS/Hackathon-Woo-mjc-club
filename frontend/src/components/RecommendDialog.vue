@@ -103,7 +103,7 @@ onBeforeUnmount(() => clearInterval(timer))
   <dialog ref="dlg" @click.self="close()">
     <div class="sheet-hd">
       <h2>내 성향 분석</h2>
-      <p>여섯 가지만 고르면 어울리는 동아리를 찾아드립니다.</p>
+      <p>여섯 가지만 고르면 AI가 우리 대학에 존재하는 동아리 중 어울리는 동아리를 찾아드립니다.</p>
       <button class="x" aria-label="닫기" @click="close()">✕</button>
     </div>
 
