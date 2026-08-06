@@ -189,3 +189,5 @@ def test_highlights_one_per_club(client, data):
 
     mine = [p for p in items if p["club_id"] == data["club_a"]]
     assert mine and mine[0]["title"] == "A-최신-공개"  # 동아리 안에서는 최신 1건
+    # 사진 없는 카드의 분야 그라데이션에 필요하다 (api.md §0.4)
+    assert mine[0]["category"] == "취미·교양"

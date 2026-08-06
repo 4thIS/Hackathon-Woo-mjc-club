@@ -87,6 +87,7 @@ gender           남 | 여
   "id": 91,
   "club_id": 3,
   "club_name": "필름사진동아리 그늘",
+  "category": "취미·교양",                     // 사진 없는 카드의 분야 그라데이션용
   "title": "성북동 출사, 필름 두 롤",
   "excerpt": "10월 12일 성북동 일대에서…",   // 본문 앞 120자
   "photo": "/uploads/posts/91-0.jpg",        // 대표 1장, 없으면 null

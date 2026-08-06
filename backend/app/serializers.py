@@ -45,6 +45,9 @@ def post_summary(db: Session, post: Post, viewer: User | None = None) -> dict:
         "id": post.id,
         "club_id": post.club_id,
         "club_name": post.club.name,
+        # 사진이 없는 카드는 분야 그라데이션으로 채운다 — 프론트가 동아리를 따로 조회하지
+        # 않도록 여기서 함께 준다 (디자인 기획 §2 카테고리 5색)
+        "category": post.club.category,
         "title": post.title,
         "excerpt": _excerpt(post.body),
         "photo": post.photos[0] if post.photos else None,
