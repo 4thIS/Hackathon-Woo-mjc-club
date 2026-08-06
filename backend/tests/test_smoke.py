@@ -47,3 +47,33 @@ def test_me_requires_login(client):
     r = client.get("/api/me")
     assert r.status_code == 401
     assert r.json()["detail"]["code"] == "UNAUTHORIZED"
+
+
+@pytest.mark.parametrize(
+    ("call", "status", "code"),
+    [
+        (lambda c: c.get("/api/nonexistent"), 404, "NOT_FOUND"),
+        (lambda c: c.delete("/api/health"), 405, "METHOD_NOT_ALLOWED"),
+        # 본문이 유효한 UTF-8 이 아니면 FastAPI 가 detail 을 문자열로 올린다
+        (
+            lambda c: c.post(
+                "/api/auth/login",
+                content=b'{"email":"\xff\xfe"}',
+                headers={"Content-Type": "application/json"},
+            ),
+            400,
+            "INVALID_INPUT",
+        ),
+    ],
+)
+def test_framework_errors_keep_the_contract(client, call, status, code):
+    """라우팅·파싱 실패도 {detail:{code,message}} 여야 한다 (api.md §0.1).
+
+    Starlette 가 부모 클래스로 raise 하므로 핸들러를 부모에 걸지 않으면 여기서 샌다.
+    프론트는 detail.code 로 분기하기 때문에 문자열이 오면 조용히 깨진다.
+    """
+    r = call(client)
+    assert r.status_code == status
+    detail = r.json()["detail"]
+    assert detail["code"] == code
+    assert isinstance(detail["message"], str)

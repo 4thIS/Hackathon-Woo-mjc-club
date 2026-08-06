@@ -3,71 +3,380 @@
 라우트 선언은 계약이다. 함수 본문만 채우면 된다.
 """
 
+import secrets
+from datetime import UTC, date, datetime, timedelta
+
 from fastapi import APIRouter, Depends, Response
+from fastapi.responses import RedirectResponse
+from pydantic import BaseModel
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from .. import errors
+from .. import enums, errors, serializers
+from ..config import settings
 from ..db import get_db
 from ..deps import current_user, verified_user
-from ..models import User
+from ..models import Club, ClubApplication, ClubMember, EmailToken, JoinRequest, LeaveRequest, User
+from ..security import (
+    SESSION_COOKIE,
+    decrypt_ai_key,
+    encrypt_ai_key,
+    hash_password,
+    sign_session,
+    verify_password,
+)
+from ..services import ai_draft, mailer
 
 router = APIRouter(tags=["auth"])
 
+ALLOWED_DOMAINS = ("mjc.ac.kr", "on.mjc.ac.kr")
+TOKEN_TTL = timedelta(hours=24)  # api.md 에 미정 — 24시간. 만료돼도 재발송으로 복구된다
+LEAVE_AUTO_DAYS = 7  # 기획서 §5.4
+
+
+# ── 요청 본문 ──────────────────────────────────────────────
+
+
+class SignupIn(BaseModel):
+    email: str
+    password: str
+    student_id: str
+    name: str
+    dept: str
+    birth: date
+    gender: str
+
+
+class LoginIn(BaseModel):
+    email: str
+    password: str
+
+
+class ResendIn(BaseModel):
+    email: str
+
+
+class UpdateMeIn(BaseModel):
+    """이름·학번·생년월일·성별·이메일은 받지 않는다 (기획서 §4.3).
+
+    NOTE(wj): 비밀번호 변경에 현재 비밀번호 확인이 없다. 디자인 기획 §5.1 의 내 정보
+    화면은 '현재/새/확인' 3필드다. 지금은 계약(api.md §2)을 그대로 따르고,
+    화면을 붙일 때 PM 과 합의해 `current_password` 를 추가한다.
+    """
+
+    password: str | None = None
+    dept: str | None = None
+    academic_status: str | None = None
+
+
+class AiKeyIn(BaseModel):
+    api_key: str
+
+
+# ── 공통 ───────────────────────────────────────────────────
+
+
+def me_payload(user: User) -> dict:
+    """api.md §2 의 Me 객체. 로그인·조회·수정이 모두 같은 형태를 돌려준다."""
+    return {
+        "id": user.id,
+        "email": user.email,
+        "name": user.name,
+        "dept": user.dept,
+        "birth": user.birth.isoformat(),
+        "gender": user.gender,
+        "grade": user.grade,
+        "academic_status": user.academic_status,
+        "email_verified": user.email_verified,
+        "is_admin": user.is_admin,
+        "ai_key": {
+            "registered": user.ai_key_enc is not None,
+            "masked": f"****{user.ai_key_tail}" if user.ai_key_tail else None,
+        },
+    }
+
+
+def iso(dt: datetime) -> str:
+    """DB 드라이버가 naive 로 돌려주는 경우가 있어 UTC 로 맞춘다."""
+    return (dt if dt.tzinfo else dt.replace(tzinfo=UTC)).isoformat()
+
+
+def issue_verification(db: Session, user: User) -> bool:
+    """인증 토큰을 새로 발급하고 메일을 보낸다. 발송 성공 여부를 돌려준다."""
+    db.query(EmailToken).filter(EmailToken.user_id == user.id).delete()
+    token = EmailToken(
+        token=secrets.token_urlsafe(32),
+        user_id=user.id,
+        expires_at=datetime.now(UTC) + TOKEN_TTL,
+    )
+    db.add(token)
+    db.commit()
+
+    link = mailer.verification_link(token.token)
+    return mailer.send(
+        user.email,
+        "[MJC Club Archive] 이메일 인증",
+        f"{user.name}님, 아래 주소를 열면 인증이 완료됩니다.\n\n{link}\n\n"
+        f"이 링크는 {int(TOKEN_TTL.total_seconds() // 3600)}시간 뒤 만료됩니다.",
+    )
+
+
+# ── 인증 ───────────────────────────────────────────────────
+
 
 @router.post("/auth/signup", status_code=201)
-def signup(db: Session = Depends(get_db)):
-    raise errors.todo("회원가입")
+def signup(body: SignupIn, db: Session = Depends(get_db)):
+    email = body.email.strip().lower()
+    local, _, domain = email.partition("@")
+
+    if domain not in ALLOWED_DOMAINS:
+        raise errors.ApiError(
+            400, "INVALID_EMAIL_DOMAIN", "@mjc.ac.kr 또는 @on.mjc.ac.kr 주소만 가입할 수 있습니다."
+        )
+    if not body.student_id.isdigit():
+        raise errors.ApiError(400, "INVALID_INPUT", "학번은 숫자만 입력합니다.")
+    if local != body.student_id:
+        raise errors.ApiError(400, "EMAIL_ID_MISMATCH", "이메일 주소와 학번이 일치하지 않습니다.")
+    if len(body.password) < 8:
+        raise errors.ApiError(400, "WEAK_PASSWORD", "비밀번호는 8자 이상이어야 합니다.")
+    if body.gender not in enums.GENDERS:
+        raise errors.ApiError(400, "INVALID_INPUT", "성별 값이 올바르지 않습니다.")
+
+    # 학번이 PK다. 도메인이 달라도 같은 학번이면 여기서 막힌다 (기획서 §4.1)
+    if db.get(User, body.student_id) is not None:
+        raise errors.ApiError(409, "DUPLICATE_STUDENT_ID", "이미 가입된 학번입니다.")
+    if db.scalar(select(User).where(User.email == email)) is not None:
+        raise errors.ApiError(409, "DUPLICATE_EMAIL", "이미 가입된 이메일입니다.")
+
+    user = User(
+        id=body.student_id,
+        email=email,
+        pw_hash=hash_password(body.password),
+        name=body.name.strip(),
+        dept=body.dept.strip(),
+        birth=body.birth,
+        gender=body.gender,
+    )
+    db.add(user)
+    db.commit()
+
+    return {"student_id": user.id, "email_sent": issue_verification(db, user)}
 
 
 @router.post("/auth/login")
-def login(response: Response, db: Session = Depends(get_db)):
-    # 성공 시: response.set_cookie(SESSION_COOKIE, sign_session(user.id), httponly=True, samesite="lax")
-    raise errors.todo("로그인")
+def login(body: LoginIn, response: Response, db: Session = Depends(get_db)):
+    user = db.scalar(select(User).where(User.email == body.email.strip().lower()))
+    if user is None or not verify_password(body.password, user.pw_hash):
+        raise errors.ApiError(401, "INVALID_CREDENTIALS", "이메일 또는 비밀번호가 올바르지 않습니다.")
+
+    # 미인증 계정도 로그인은 성공한다. 권한만 비로그인 수준이다 (기획서 §4.2)
+    response.set_cookie(
+        SESSION_COOKIE, sign_session(user.id), httponly=True, samesite="lax", path="/"
+    )
+    return me_payload(user)
 
 
 @router.post("/auth/logout", status_code=204)
 def logout(response: Response):
-    raise errors.todo("로그아웃")
+    response.delete_cookie(SESSION_COOKIE, path="/")
+    return Response(status_code=204, headers=dict(response.headers))
 
 
 @router.get("/auth/verify")
 def verify(token: str, db: Session = Depends(get_db)):
-    # JSON이 아니라 302 리다이렉트다 → {FRONTEND_URL}/verify?status=ok|expired|invalid
-    raise errors.todo("이메일 인증")
+    """이메일 링크가 직접 여는 주소. JSON이 아니라 302 리다이렉트다."""
+
+    def go(status: str) -> RedirectResponse:
+        return RedirectResponse(f"{settings.frontend_url}/verify?status={status}", status_code=302)
+
+    row = db.get(EmailToken, token)
+    if row is None:
+        return go("invalid")
+
+    expires = row.expires_at
+    if expires.tzinfo is None:
+        expires = expires.replace(tzinfo=UTC)
+    if expires < datetime.now(UTC):
+        db.delete(row)
+        db.commit()
+        return go("expired")
+
+    user = db.get(User, row.user_id)
+    if user is None:
+        return go("invalid")
+
+    user.email_verified = True
+    db.delete(row)
+    db.commit()
+    return go("ok")
 
 
 @router.post("/auth/verify/resend", status_code=204)
-def resend(db: Session = Depends(get_db)):
-    raise errors.todo("인증 메일 재발송")
+def resend(body: ResendIn, db: Session = Depends(get_db)):
+    """존재 여부를 노출하지 않기 위해 없는 이메일이어도 204 다 (api.md §2)."""
+    user = db.scalar(select(User).where(User.email == body.email.strip().lower()))
+    if user is not None and not user.email_verified:
+        issue_verification(db, user)
+    return Response(status_code=204)
+
+
+# ── 내 정보 ────────────────────────────────────────────────
 
 
 @router.get("/me")
 def me(user: User = Depends(current_user)):
-    raise errors.todo("내 정보 조회")
+    return me_payload(user)
 
 
 @router.patch("/me")
-def update_me(user: User = Depends(current_user), db: Session = Depends(get_db)):
-    # 졸업 전환 시 동아리장 겸직이면 409 LEADER_CANNOT_GRADUATE (기획서 §4.3)
-    raise errors.todo("내 정보 수정")
+def update_me(body: UpdateMeIn, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    if body.password is not None:
+        if len(body.password) < 8:
+            raise errors.ApiError(400, "WEAK_PASSWORD", "비밀번호는 8자 이상이어야 합니다.")
+        user.pw_hash = hash_password(body.password)
+
+    if body.dept is not None:
+        dept = body.dept.strip()
+        if not dept:
+            raise errors.ApiError(400, "INVALID_INPUT", "학과를 입력해주세요.")
+        user.dept = dept
+
+    if body.academic_status is not None:
+        status = body.academic_status
+        if status not in enums.ACADEMIC_STATUSES:
+            raise errors.ApiError(400, "INVALID_INPUT", "학적 상태 값이 올바르지 않습니다.")
+
+        if status == enums.ACADEMIC_GRADUATED:
+            # 동아리장이 OB 가 되면 그 동아리 운영이 통째로 멈춘다 (기획서 §4.3)
+            led = db.scalars(
+                select(Club)
+                .join(ClubMember, ClubMember.club_id == Club.id)
+                .where(ClubMember.user_id == user.id, ClubMember.role == enums.ROLE_LEADER)
+            ).all()
+            if led:
+                names = " · ".join(c.name for c in led)
+                raise errors.ApiError(
+                    409,
+                    "LEADER_CANNOT_GRADUATE",
+                    f"{names} 의 동아리장입니다. 먼저 위임하거나 관리자에게 교체를 요청해주세요.",
+                )
+            # 졸업하면 모든 소속이 OB 가 된다 (기획서 §3.1)
+            for m in db.scalars(select(ClubMember).where(ClubMember.user_id == user.id)):
+                m.membership = enums.MEMBERSHIP_OB
+
+        user.academic_status = status
+
+    db.commit()
+    db.refresh(user)
+    return me_payload(user)
 
 
 @router.get("/me/clubs")
 def my_clubs(user: User = Depends(current_user), db: Session = Depends(get_db)):
-    raise errors.todo("내 동아리 목록")
+    rows = db.scalars(
+        select(ClubMember).where(ClubMember.user_id == user.id).order_by(ClubMember.club_id)
+    ).all()
+    return [
+        {
+            # 요약 형태는 serializers 가 소유한다. 여기서 다시 조립하지 않는다 (api.md §0.4)
+            "club": serializers.club_summary(db, m.club),
+            "role": m.role,
+            "membership": m.membership,
+            "gen": m.gen,
+        }
+        for m in rows
+    ]
 
 
 @router.get("/me/requests")
 def my_requests(user: User = Depends(current_user), db: Session = Depends(get_db)):
-    raise errors.todo("내 신청 현황")
+    joins = db.scalars(
+        select(JoinRequest).where(JoinRequest.user_id == user.id).order_by(JoinRequest.id.desc())
+    ).all()
+    creates = db.scalars(
+        select(ClubApplication)
+        .where(ClubApplication.applicant_id == user.id)
+        .order_by(ClubApplication.id.desc())
+    ).all()
+    leaves = db.scalars(
+        select(LeaveRequest).where(LeaveRequest.user_id == user.id).order_by(LeaveRequest.id.desc())
+    ).all()
+
+    return {
+        "join": [
+            {
+                "id": r.id,
+                "club_id": r.club_id,
+                "club_name": r.club.name,
+                "status": r.status,
+                "created_at": iso(r.created_at),
+                "cancellable": r.status == enums.REQ_PENDING,
+            }
+            for r in joins
+        ],
+        "create": [
+            {
+                "id": a.id,
+                "name": a.name,
+                "status": a.status,
+                "reject_reason": a.reject_reason,
+                "created_at": iso(a.created_at),
+                "cancellable": a.status == enums.REQ_PENDING,
+            }
+            for a in creates
+        ],
+        "leave": [
+            {
+                "id": r.id,
+                "club_id": r.club_id,
+                "club_name": r.club.name,
+                "status": r.status,
+                "created_at": iso(r.created_at),
+                # 실제 자동 승인은 T4(탈퇴 요청 목록)가 조회 시점에 처리한다 (구현계획 §2)
+                "auto_approve_at": iso(r.created_at + timedelta(days=LEAVE_AUTO_DAYS)),
+                "cancellable": r.status == enums.REQ_PENDING,
+            }
+            for r in leaves
+        ],
+    }
+
+
+# ── AI 키 ──────────────────────────────────────────────────
 
 
 @router.post("/me/ai-key")
-def register_ai_key(user: User = Depends(verified_user), db: Session = Depends(get_db)):
-    # 저장 전에 게이트웨이 모델 목록 조회로 유효성 확인 (기획서 §4.5)
-    raise errors.todo("AI 키 등록")
+def register_ai_key(
+    body: AiKeyIn, user: User = Depends(verified_user), db: Session = Depends(get_db)
+):
+    key = body.api_key.strip()
+    if not key:
+        raise errors.ApiError(400, "INVALID_AI_KEY", "키를 입력해주세요.")
+
+    # 저장 전에 게이트웨이가 실제로 받아주는 키인지 확인한다 (기획서 §4.5).
+    # 글 쓰다가 실패하는 상황을 막는 게 목적이다.
+    try:
+        valid = ai_draft.verify_key(key)
+    except Exception as e:  # noqa: BLE001 — 게이트웨이 장애와 키 오류를 구분해야 한다
+        raise errors.ApiError(
+            502, "AI_GATEWAY_ERROR", "AI 서버에 연결하지 못했습니다. 잠시 후 다시 시도해주세요."
+        ) from e
+    if not valid:
+        raise errors.ApiError(400, "INVALID_AI_KEY", "키가 유효하지 않습니다. 다시 확인해주세요.")
+
+    user.ai_key_enc = encrypt_ai_key(key)
+    user.ai_key_tail = key[-4:]
+    db.commit()
+    return {"registered": True, "masked": f"****{user.ai_key_tail}"}
 
 
 @router.delete("/me/ai-key", status_code=204)
 def delete_ai_key(user: User = Depends(verified_user), db: Session = Depends(get_db)):
-    raise errors.todo("AI 키 삭제")
+    user.ai_key_enc = None
+    user.ai_key_tail = None
+    db.commit()
+    return Response(status_code=204)
+
+
+def current_ai_key(user: User) -> str | None:
+    """T6 에서 쓴다. 저장된 키를 복호화해 돌려준다 — 응답에는 절대 싣지 않는다."""
+    return decrypt_ai_key(user.ai_key_enc) if user.ai_key_enc else None

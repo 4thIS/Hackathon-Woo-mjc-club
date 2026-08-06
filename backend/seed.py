@@ -10,6 +10,12 @@
 import sys
 from datetime import date, timedelta
 
+# Windows 콘솔은 기본이 cp949 라 '—' 같은 글자에서 UnicodeEncodeError 로 죽는다.
+# 주입은 이미 끝난 뒤 마지막 print 에서 터져서 실패한 것처럼 보인다.
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+
 from sqlalchemy import select
 
 from app import enums

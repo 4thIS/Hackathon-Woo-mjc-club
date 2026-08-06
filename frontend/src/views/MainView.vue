@@ -1,66 +1,83 @@
 <script setup>
 /* T2 · 담당 cw — 메인. 디자인 기획 §5.1 (곡선 캐러셀 + 스크롤 2단 스냅 + 브랜드 섹션)
  *
- * T0 시점에는 스택이 살아 있는지 눈으로 확인하는 최소 화면만 둔다.
- * 캐러셀 기하(R:1500 big:1.5 …)와 스냅 레이아웃은 T2에서 목업 그대로 이식한다.
+ * 레이아웃
+ *   [헤더 64]
+ *   [① 캐러셀  100vh − 64 − 타이틀높이]   ← scroll-snap 1
+ *   [② 타이틀 148~188px + 브랜드 섹션]     ← scroll-snap 2 (타이틀이 경첩)
+ *
+ * html 에 거는 스냅 규칙은 scoped CSS 로 안 먹는다. documentElement 에 클래스를
+ * 붙였다가 이 화면을 벗어날 때 반드시 뗀다 (다른 페이지에 스냅이 남으면 안 된다).
  */
-import { onMounted, ref } from 'vue'
-import { RouterLink } from 'vue-router'
+import { onBeforeUnmount, onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import api from '../api'
+import MainCarousel from '../components/MainCarousel.vue'
+import MainBrandSection from '../components/MainBrandSection.vue'
 
+const router = useRouter()
+
+const posts = ref([])
 const stats = ref(null)
-const clubs = ref([])
-const error = ref('')
+const loading = ref(true)
+const notice = ref('')
 
 onMounted(async () => {
-  try {
-    const [s, c] = await Promise.all([api.stats(), api.clubs.list()])
-    stats.value = s
-    clubs.value = c.items
-  } catch (e) {
-    error.value = e.message
+  document.documentElement.classList.add('main-snap')
+
+  const [h, s] = await Promise.allSettled([api.posts.highlights(12), api.stats()])
+
+  if (h.status === 'fulfilled') {
+    posts.value = h.value ?? []                 // 계약: PostSummary[] (docs/api.md §3)
+    if (!posts.value.length) notice.value = '아직 공개된 활동 기록이 없습니다.'
+  } else {
+    notice.value = '활동 기록을 불러오지 못했습니다. 잠시 후 다시 시도해주세요.'
   }
+
+  if (s.status === 'fulfilled') stats.value = s.value
+
+  loading.value = false
 })
+
+onBeforeUnmount(() => {
+  document.documentElement.classList.remove('main-snap')
+})
+
+function openPost(post) {
+  router.push(`/posts/${post.id}`)
+}
 </script>
 
 <template>
-  <section class="container hero">
-    <p class="eyebrow">mjc hackathon project with Woo</p>
-    <h1 class="page-title brand-title">MJC Club Archive</h1>
-    <p class="lead">소개글 대신 <strong>지난주에 실제로 뭘 했는지</strong>를 보고 동아리를 고르세요.</p>
-
-    <div v-if="error" class="warn">{{ error }}</div>
-
-    <div v-if="stats" class="stats">
-      <div><b>{{ stats.clubs }}</b><span>등록 동아리</span></div>
-      <div><b>{{ stats.recruiting }}</b><span>모집중</span></div>
-      <div><b>{{ stats.posts }}</b><span>활동 기록</span></div>
-      <div><b>{{ stats.categories }}</b><span>분야</span></div>
+  <div class="main">
+    <div class="stage-wrap">
+      <MainCarousel :posts="posts" :loading="loading" :message="notice" @select="openPost" />
     </div>
 
-    <!-- TODO(T2): 여기가 곡선 캐러셀 자리 (디자인 기획 §5.1) -->
-    <ul class="grid">
-      <li v-for="c in clubs" :key="c.id" class="card">
-        <RouterLink :to="`/clubs/${c.id}`">
-          <p class="card-title">{{ c.name }}</p>
-          <p class="sub">{{ c.category }} · {{ c.recruit_status }} · {{ c.member_count }}명</p>
-        </RouterLink>
-      </li>
-    </ul>
-
-    <RouterLink to="/archive" class="btn ghost">아카이브 바로가기 →</RouterLink>
-  </section>
+    <MainBrandSection :stats="stats" />
+  </div>
 </template>
 
 <style scoped>
-.hero { padding: 72px 0 120px; }
-.lead { font-size: 17px; color: var(--dim); max-width: 46ch; }
-.stats { display: flex; gap: 36px; margin: 32px 0 40px; }
-.stats div { display: flex; flex-direction: column; }
-.stats b { font-size: 28px; font-weight: 800; letter-spacing: -.03em; }
-.stats span { font-size: 12.5px; color: var(--dim); }
-.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(248px, 1fr)); gap: 16px; padding: 0; margin: 0 0 32px; list-style: none; }
-.grid .card { padding: 18px; }
-.card-title { margin: 0 0 4px; }
-.sub { margin: 0; }
+.main { --title-h: clamp(148px, 19vh, 188px); }
+
+/* ① 캐러셀 화면 */
+.stage-wrap {
+  scroll-snap-align: start;
+  position: relative;
+  height: calc(100vh - var(--header-h) - var(--title-h));
+  min-height: 400px;
+}
+</style>
+
+<!-- html 에 거는 규칙은 scoped 로 안 된다. .main-snap 이 붙은 동안에만 적용된다 -->
+<style>
+html.main-snap {
+  scroll-snap-type: y mandatory;
+  scroll-padding-top: var(--header-h);
+  scroll-behavior: smooth;
+}
+@media (prefers-reduced-motion: reduce) {
+  html.main-snap { scroll-behavior: auto; }
+}
 </style>

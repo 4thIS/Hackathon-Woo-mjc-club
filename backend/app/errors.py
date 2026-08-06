@@ -9,6 +9,7 @@
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 
 class ApiError(HTTPException):
@@ -28,17 +29,32 @@ def not_found(message: str = "찾을 수 없습니다.") -> ApiError:
     return ApiError(404, "NOT_FOUND", message)
 
 
+#  프레임워크가 detail 을 문자열로 올릴 때 붙일 code (api.md §0.1)
+_CODES = {
+    400: "INVALID_INPUT",
+    401: "UNAUTHORIZED",
+    403: "FORBIDDEN",
+    404: "NOT_FOUND",
+    405: "METHOD_NOT_ALLOWED",
+}
+
+
 def todo(task: str) -> ApiError:
     """T0 뼈대의 미구현 자리. 담당자가 구현하면서 지운다."""
     return ApiError(501, "NOT_IMPLEMENTED", f"{task} 미구현입니다.")
 
 
 def install_handlers(app: FastAPI) -> None:
-    @app.exception_handler(HTTPException)
+    # ★ Starlette 쪽 HTTPException 에 걸어야 한다. FastAPI 의 HTTPException 은 이 클래스의
+    #   자식이라 함께 잡히지만, 반대로 걸면 라우팅 404·405 와 본문 파싱 실패(전부 Starlette 가
+    #   부모 클래스로 raise 한다)가 새어나가 {"detail": "문자열"} 로 응답된다 — §0.1 위반.
+    @app.exception_handler(StarletteHTTPException)
     async def _http(_: Request, exc: HTTPException):
         detail = exc.detail
         if not isinstance(detail, dict):
-            detail = {"code": "ERROR", "message": str(detail)}
+            # 프레임워크가 문자열로 올린 것들(404 Not Found, 405 Method Not Allowed,
+            # 본문 파싱 실패). 프론트가 분기할 수 있도록 상태코드에 맞는 code 를 붙인다.
+            detail = {"code": _CODES.get(exc.status_code, "ERROR"), "message": str(detail)}
         return JSONResponse(status_code=exc.status_code, content={"detail": detail})
 
     @app.exception_handler(RequestValidationError)
