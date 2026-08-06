@@ -96,7 +96,13 @@ async function clearQuery() {
   <div class="wrap">
     <aside class="rail">
       <h1 class="latin">Archive</h1>
-      <p class="sub">{{ loading ? '불러오는 중…' : sub }}</p>
+      <div class="head-row">
+        <p class="sub">{{ loading ? '불러오는 중…' : sub }}</p>
+        <!-- 헤더에 있던 진입점. 동아리를 찾다가 없을 때 누르는 자리라 여기가 맞다 -->
+        <RouterLink class="new-club" to="/clubs/new">
+          <span aria-hidden="true">＋</span> 동아리 개설
+        </RouterLink>
+      </div>
 
       <div class="search">
         <input
@@ -210,10 +216,40 @@ async function clearQuery() {
   letter-spacing: -0.03em;
   line-height: 1;
 }
-.rail .sub {
+/* 제목 바로 아래 — 왼쪽은 개수, 오른쪽은 개설 버튼 */
+.head-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
   margin: 0 0 30px;
+}
+.rail .sub {
+  margin: 0;
   font-size: 13px;
   color: var(--dim);
+}
+.new-club {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex: none;
+  padding: 6px 12px;
+  border: var(--border);
+  border-radius: var(--r-chip);
+  background: var(--card);
+  color: var(--dim);
+  font-size: 12.5px;
+  font-weight: 700;
+  transition: border-color var(--t-hover), color var(--t-hover);
+}
+.new-club:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.new-club span {
+  font-size: 13px;
+  line-height: 1;
 }
 
 .search {

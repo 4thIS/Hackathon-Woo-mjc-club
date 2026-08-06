@@ -5,7 +5,8 @@
  *   R:1500 big:1.5 small:0.25 tilt:0.42 stepPx:268 stem:36 cardH:164 damping:0.94 clickSlop:6
  *   무대 높이 660px 미만이면 big 1.5 → 1.26 (카드 상단 잘림 방지)
  *
- * 카드에는 사진 + 제목 2줄만 들어간다. 동아리명은 호 위 SVG 라벨이다.
+ * 호 위 SVG 라벨은 활동 날짜다 — 이 띠 자체가 타임라인이다.
+ * 동아리명은 카드 사진 왼쪽 위에 북마크로 얹는다.
  */
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { catKey, catEmoji } from './ClubCategory'
@@ -151,6 +152,9 @@ function photoStyle(p) {
     : { backgroundImage: grad }
 }
 const emojiOf = (p) => (p.photo ? null : catEmoji(p?.category))
+
+/* 호 위 라벨 = 활동 날짜 (타임라인 표기는 타임라인과 같은 점 구분자) */
+const dateText = (d) => (d ? String(d).replaceAll('-', '.') : '')
 
 function cardStyle(it) {
   return {
@@ -321,12 +325,13 @@ onBeforeUnmount(() => {
           :x1="it.stem.x1" :y1="it.stem.y1" :x2="it.stem.x2" :y2="it.stem.y2"
           stroke="var(--band)" :stroke-width="it.stem.w" :opacity="it.t.opacity"
         />
-        <!-- 호 위의 라벨 = 동아리명 (카드 안에는 사진과 제목만 둔다) -->
+        <!-- 호 위의 라벨 = 활동 날짜. 띠를 따라 시간이 흐른다 -->
         <text
           :x="it.label.x" :y="it.label.y" text-anchor="middle"
-          :font-size="it.label.size" font-weight="700" fill="var(--ink)"
+          :font-size="it.label.size" font-weight="700" fill="var(--dim)"
           :opacity="it.t.opacity" font-family="inherit" :transform="it.label.rotate"
-        >{{ it.post.club_name }}</text>
+          style="font-variant-numeric: tabular-nums"
+        >{{ dateText(it.post.activity_date) }}</text>
       </template>
 
       <line
@@ -349,6 +354,7 @@ onBeforeUnmount(() => {
         @keydown.space.prevent="open(it.post.id)"
       >
         <span class="photo" :style="photoStyle(it.post)" :data-emoji="emojiOf(it.post)"></span>
+        <span class="ribbon">{{ it.post.club_name }}</span>
         <span class="ttl">{{ it.post.title }}</span>
       </button>
     </div>
@@ -413,6 +419,17 @@ onBeforeUnmount(() => {
   background-size: cover; background-position: center;
 }
 .photo::after { content: attr(data-emoji); font-size: 2.4rem; opacity: .55; }
+
+/* 동아리명 — 사진 왼쪽 위에 걸린 북마크. 아래끝이 V 로 파여 띠처럼 보인다 */
+.ribbon {
+  position: absolute; top: 0; left: 13px; z-index: 2;
+  max-width: calc(100% - 30px);
+  padding: 6px 9px 12px;
+  background: var(--accent); color: var(--onAccent);
+  font-size: 11px; font-weight: 700; line-height: 1.2; letter-spacing: -.01em;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 50% calc(100% - 6px), 0 100%);
+}
 
 .ttl {
   display: -webkit-box;

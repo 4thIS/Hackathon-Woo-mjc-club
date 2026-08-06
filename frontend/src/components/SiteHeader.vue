@@ -52,9 +52,8 @@ function toggle() {
       </RouterLink>
 
       <nav>
-        <RouterLink to="/">홈</RouterLink>
-        <RouterLink to="/archive">둘러보기</RouterLink>
-        <RouterLink to="/clubs/new">동아리 개설</RouterLink>
+        <!-- 홈은 왼쪽 로고가 맡는다. 동아리 개설 진입점은 아카이브 화면(제목 옆)에 둔다 -->
+        <RouterLink to="/archive">아카이브</RouterLink>
       </nav>
 
       <div class="right">
