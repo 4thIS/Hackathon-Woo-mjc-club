@@ -35,6 +35,8 @@ const paragraphs = computed(() =>
 )
 const recruitOpen = computed(() => RECRUITING.includes(club.value?.recruit_status))
 const memberCount = computed(() => club.value?.counts?.total ?? 0)
+// 활동 글 작성 권한은 동아리장만 (기획서 §6.1)
+const isLeader = computed(() => club.value?.my?.role === '동아리장')
 
 const meeting = computed(() => {
   const c = club.value
@@ -126,6 +128,10 @@ watch(() => props.id, load)
 
         <div class="side">
           <div class="acts">
+            <!-- 동아리장에게만 보이는 진입점. 없으면 글 작성 화면에 주소를 직접 쳐야 들어간다 -->
+            <RouterLink v-if="isLeader" class="btn ghost write" :to="`/clubs/${club.id}/posts/new`">
+              활동 글 쓰기
+            </RouterLink>
             <button class="apply" :disabled="applyDisabled" :title="applyReason || '가입 신청'"
                     @click="onApply">가입 신청</button>
             <button class="members" @click="membersDlg?.open()">인원 <b>{{ memberCount }}</b></button>
@@ -218,6 +224,7 @@ watch(() => props.id, load)
   border-radius: var(--r-btn); padding: 11px 18px; font: inherit; font-size: 14.5px; font-weight: 700;
   display: inline-flex; align-items: center; gap: 8px; cursor: pointer;
 }
+.acts .write { height: auto; padding: 11px 18px; font-size: 14.5px; }
 .acts .apply:hover, .acts .members:hover { filter: brightness(.97); }
 .acts .apply:disabled { opacity: .45; cursor: not-allowed; filter: none; }
 
