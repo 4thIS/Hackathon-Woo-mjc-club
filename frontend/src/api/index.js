@@ -138,6 +138,8 @@ export const api = {
   // --- 활동 글 (§6) ---
   posts: {
     highlights: (limit = 12) => get('/posts/highlights' + qs({ limit })),
+    // 전체 피드 — 동아리를 가리지 않고 최신순 (동아리 타임라인은 오래된 순이다)
+    feed: ({ q = '', offset = 0, limit = 12 } = {}) => get('/posts' + qs({ q, offset, limit })),
     detail: (id) => get(`/posts/${id}`),
     create: (clubId, payload) => post(`/clubs/${clubId}/posts`, payload),
     update: (id, payload) => patch(`/posts/${id}`, payload),
