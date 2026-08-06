@@ -62,8 +62,10 @@ const genText = computed(() => {
 
 /* 가입 버튼 — my 가 null 이면 비로그인 (api.md §3) */
 const loggedIn = computed(() => !!club.value?.my)
+/* 이미 부원이면 모집 상태와 무관하게 잠근다 — 모집중이 아닐 때만 잠그면
+   가입한 동아리에서도 버튼이 눌려 "모집중이 아닙니다" 모달이 뜬다 */
 const applyDisabled = computed(
-  () => recruitOpen.value && loggedIn.value && club.value?.my?.can_apply === false,
+  () => loggedIn.value && club.value?.my?.can_apply === false,
 )
 const applyReason = computed(() => {
   const my = club.value?.my
@@ -119,7 +121,8 @@ watch(() => props.id, load)
 
   <template v-else-if="club">
     <section class="top" :style="phVars">
-      <h1 class="page-title">{{ club.name }}</h1>
+      <!-- 동아리명에 섞인 영문만 Inter 로 뜬다 (한글은 뒤 폰트로 넘어간다) -->
+      <h1 class="page-title latin">{{ club.name }}</h1>
 
       <div class="top-grid">
         <div class="photo" :style="club.image ? { backgroundImage: `url(${club.image})` } : null">
@@ -132,8 +135,10 @@ watch(() => props.id, load)
             <RouterLink v-if="isLeader" class="btn ghost write" :to="`/clubs/${club.id}/posts/new`">
               활동 글 쓰기
             </RouterLink>
-            <button class="apply" :disabled="applyDisabled" :title="applyReason || '가입 신청'"
-                    @click="onApply">가입 신청</button>
+            <!-- disabled 버튼은 마우스 이벤트를 받지 않는다. 감싼 칸이 호버를 대신 받는다 -->
+            <span class="apply-slot" :data-tip="applyDisabled ? applyReason : ''">
+              <button class="apply" :disabled="applyDisabled" @click="onApply">가입 신청</button>
+            </span>
             <button class="members" @click="membersDlg?.open()">인원 <b>{{ memberCount }}</b></button>
           </div>
 
@@ -228,6 +233,21 @@ watch(() => props.id, load)
 .acts .apply:hover, .acts .members:hover { filter: brightness(.97); }
 .acts .apply:disabled { opacity: .45; cursor: not-allowed; filter: none; }
 
+/* 잠긴 이유를 마우스를 올렸을 때만 연하게 띄운다 */
+.apply-slot { position: relative; display: inline-flex; }
+.apply-slot:not([data-tip=""])::after {
+  content: attr(data-tip);
+  position: absolute; left: 50%; bottom: calc(100% + 9px);
+  transform: translateX(-50%) translateY(4px);
+  padding: 7px 12px; border-radius: 10px;
+  background: var(--card); border: var(--border);
+  box-shadow: 0 6px 18px var(--shadow);
+  font-size: 12.5px; font-weight: 600; color: var(--dim);
+  white-space: nowrap; pointer-events: none;
+  opacity: 0; transition: opacity .18s ease, transform .18s ease;
+}
+.apply-slot:not([data-tip=""]):hover::after { opacity: .92; transform: translateX(-50%); }
+
 .note { margin: 0 0 16px; }
 .note.sub { font-size: 12.5px; }
 
@@ -266,6 +286,8 @@ dialog::backdrop { backdrop-filter: blur(3px); }
   .top-grid { grid-template-columns: 1fr; }
   .photo { aspect-ratio: 16 / 10; }
   .acts { justify-content: stretch; }
+  .acts .apply-slot { flex: 1; }
   .acts .apply { flex: 1; }
+  .apply-slot::after { white-space: normal; max-width: 68vw; }
 }
 </style>

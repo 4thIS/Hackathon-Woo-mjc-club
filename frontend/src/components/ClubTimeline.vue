@@ -247,16 +247,13 @@ onBeforeUnmount(() => {
 }
 .tl-row.r .conn { left: calc(var(--axis) / -2); }
 .tl-row.l .conn { right: calc(var(--axis) / -2); }
-.conn::after {
-  content: ""; position: absolute; top: 50%; width: 0; height: 0;
-  border-top: 5px solid transparent; border-bottom: 5px solid transparent;
-}
-.tl-row.r .conn::after { right: -1px; transform: translateY(-50%); border-left: 8px solid var(--accent); }
-.tl-row.l .conn::after { left: -1px; transform: translateY(-50%); border-right: 8px solid var(--accent); }
+/* 날짜는 마디를 사이에 두고 연결선의 맞은편에 선다 — 선·마디·날짜가 한 줄로 이어진다 */
 .conn .date {
-  position: absolute; left: 50%; bottom: 9px; transform: translateX(-50%);
+  position: absolute; top: 50%; transform: translateY(-50%);
   font-size: 12.5px; font-weight: 700; color: var(--dim); white-space: nowrap;
 }
+.tl-row.r .conn .date { right: calc(100% + 14px); }
+.tl-row.l .conn .date { left: calc(100% + 14px); }
 
 .post {
   display: block; background: var(--card); border: var(--border);
@@ -311,8 +308,10 @@ onBeforeUnmount(() => {
   .tl-row.l .conn, .tl-row.r .conn {
     left: calc(14px - var(--axis)); right: auto; width: calc(var(--axis) - 14px);
   }
-  .tl-row.l .conn::after { left: auto; right: -1px; border-right: none; border-left: 8px solid var(--accent); }
-  .conn .date { left: 0; transform: none; bottom: 8px; font-size: 11.5px; }
+  /* 좁은 화면에선 축 왼쪽에 날짜를 놓을 자리가 없다 — 선 위에 얹는다 */
+  .tl-row.l .conn .date, .tl-row.r .conn .date {
+    left: 0; right: auto; top: auto; bottom: 8px; transform: none; font-size: 11.5px;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

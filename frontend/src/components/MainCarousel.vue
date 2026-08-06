@@ -74,9 +74,12 @@ const frame = computed(() => {
   const cy = h * 0.53 - R
   const half = visibleHalf(R, cy, w)
 
-  const p1 = { x: cx + R * Math.sin(-half), y: cy + R * Math.cos(-half) }
-  const p2 = { x: cx + R * Math.sin(half), y: cy + R * Math.cos(half) }
-  const bandPath = `M${p1.x},${p1.y} A${R},${R} 0 0 0 ${p2.x},${p2.y}`
+  const pt = (a) => ({ x: cx + R * Math.sin(a), y: cy + R * Math.cos(a) })
+  const arc = (a0, a1) => {
+    const p = pt(a0)
+    const q = pt(a1)
+    return `M${p.x},${p.y} A${R},${R} 0 0 0 ${q.x},${q.y}`
+  }
 
   const list = props.posts
   const total = Math.max(list.length * STEP + GAP, GAP)
@@ -116,7 +119,24 @@ const frame = computed(() => {
     })
   }
 
-  return { w, h, bandPath, items, ticks }
+  /* 마지막 카드와 첫 카드 사이는 트랙이 아니다. 그 구간의 호를 지워 고리를 끊는다 —
+     끝이 어디인지 선 자체로 보인다. 갭 = 두 마감 표시 사이 한 칸(STEP) */
+  const bands = []
+  if (!list.length) {
+    bands.push(arc(-half, half))
+  } else {
+    const gc = wrapAngle((list.length - 0.5) * STEP + GAP / 2 - offset.value, total)
+    const g0 = gc - STEP / 2
+    const g1 = gc + STEP / 2
+    if (g1 <= -half || g0 >= half) {
+      bands.push(arc(-half, half))
+    } else {
+      if (g0 > -half) bands.push(arc(-half, g0))
+      if (g1 < half) bands.push(arc(g1, half))
+    }
+  }
+
+  return { w, h, bands, items, ticks }
 })
 
 /* ── 카드 표현 ─────────────────────────────────────────── */
@@ -233,6 +253,21 @@ function onKeydown(e) {
   else if (e.key === 'ArrowLeft') { e.preventDefault(); nudge(-1) }
 }
 
+/* ── 자동 회전 ────────────────────────────────────────── */
+/* offset 이 커지면 카드는 왼쪽으로 흐른다 — 원의 중심이 화면 위에 있으므로 시계방향이다.
+ * 카드 한 칸에 9초. 손이 올라가 있거나 관성이 도는 동안은 멈춘다. */
+const AUTO_PER_SEC = STEP / 9
+let autoRaf = null
+let autoLast = 0
+
+function autoSpin(t) {
+  autoRaf = requestAnimationFrame(autoSpin)
+  const dt = autoLast ? Math.min(120, t - autoLast) : 16   // 탭 전환 후 튀지 않게 상한
+  autoLast = t
+  if (dragging.value || raf) return
+  offset.value += (AUTO_PER_SEC * dt) / 1000
+}
+
 /* ── 크기 추적 ────────────────────────────────────────── */
 let ro = null
 function measure() {
@@ -249,10 +284,12 @@ onMounted(() => {
     ro.observe(stage.value)
   }
   addEventListener('resize', measure)
+  if (!reduced) autoRaf = requestAnimationFrame(autoSpin)
 })
 
 onBeforeUnmount(() => {
   stopRaf()
+  if (autoRaf) cancelAnimationFrame(autoRaf)
   ro?.disconnect()
   removeEventListener('resize', measure)
 })
@@ -273,7 +310,10 @@ onBeforeUnmount(() => {
     @keydown="onKeydown"
   >
     <svg class="band" :viewBox="`0 0 ${frame.w} ${frame.h}`" aria-hidden="true">
-      <path :d="frame.bandPath" fill="none" stroke="var(--band)" stroke-width="3.5" stroke-linecap="round" />
+      <path
+        v-for="(d, i) in frame.bands" :key="`band-${i}`"
+        :d="d" fill="none" stroke="var(--band)" stroke-width="3.5" stroke-linecap="round"
+      />
 
       <template v-for="it in frame.items" :key="`g-${it.post.id}`">
         <circle :cx="it.dot.cx" :cy="it.dot.cy" :r="it.dot.r" fill="var(--band)" :opacity="it.t.opacity" />
