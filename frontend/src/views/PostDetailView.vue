@@ -31,6 +31,32 @@ const emoji = computed(() => postEmoji(post.value?.id ?? props.id))
 
 const dateText = (d) => (d ? String(d).replaceAll('-', '.') : '')
 
+/* ── 사진 슬라이드 ──
+ * 스크롤 스냅으로 넘긴다 — 손가락 스와이프·트랙패드가 공짜로 따라온다.
+ * 사진 비율이 제각각이라 칸 높이를 고정하고 contain 으로 가운데에 앉힌다. */
+const track = ref(null)
+const shotIdx = ref(0)
+const slideMotion =
+  typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches
+    ? 'auto'
+    : 'smooth'
+
+function goShot(i) {
+  const el = track.value
+  if (!el) return
+  const n = photos.value.length
+  const to = Math.min(Math.max(i, 0), n - 1)
+  el.scrollTo({ left: el.clientWidth * to, behavior: slideMotion })
+  shotIdx.value = to
+}
+
+/* 스크롤이 멈춘 자리로 현재 장을 되읽는다 (스와이프·키보드 모두 여기로 모인다) */
+function onTrackScroll() {
+  const el = track.value
+  if (!el || !el.clientWidth) return
+  shotIdx.value = Math.round(el.scrollLeft / el.clientWidth)
+}
+
 const authorLine = computed(() => {
   const a = post.value?.author
   if (!a) return ''
@@ -140,11 +166,31 @@ watch(() => props.id, load)
       </p>
     </div>
 
-    <!-- 사진: 여러 장이면 세로로 쌓는다 (캐러셀은 T5 컷라인 B) -->
-    <div v-if="photos.length" class="shots">
-      <img v-for="(src, i) in photos" :key="src"
-           class="shot" :src="src" loading="lazy"
-           :alt="`${post.title} 사진 ${i + 1}`">
+    <!-- 사진: 좌우로 넘겨 본다. 비율이 달라도 칸 가운데에 온전히 들어온다 -->
+    <div v-if="photos.length" class="gallery"
+         role="group" :aria-label="`사진 ${photos.length}장`"
+         @keydown.left.prevent="goShot(shotIdx - 1)"
+         @keydown.right.prevent="goShot(shotIdx + 1)">
+      <div ref="track" class="track" tabindex="0" @scroll.passive="onTrackScroll">
+        <div v-for="(src, i) in photos" :key="src" class="slide">
+          <img :src="src" :loading="i ? 'lazy' : 'eager'" :alt="`${post.title} 사진 ${i + 1}`">
+        </div>
+      </div>
+
+      <template v-if="photos.length > 1">
+        <button class="nav prev" type="button" aria-label="이전 사진"
+                :disabled="shotIdx === 0" @click="goShot(shotIdx - 1)">‹</button>
+        <button class="nav next" type="button" aria-label="다음 사진"
+                :disabled="shotIdx === photos.length - 1" @click="goShot(shotIdx + 1)">›</button>
+
+        <div class="dots">
+          <button v-for="(src, i) in photos" :key="src" type="button"
+                  class="dot" :class="{ on: i === shotIdx }"
+                  :aria-label="`${i + 1}번째 사진`" :aria-current="i === shotIdx"
+                  @click="goShot(i)"></button>
+        </div>
+        <p class="count sub">{{ shotIdx + 1 }} / {{ photos.length }}</p>
+      </template>
     </div>
     <div v-else class="shot fallback" aria-hidden="true">{{ emoji }}</div>
 
@@ -214,13 +260,57 @@ watch(() => props.id, load)
   display: flex; flex-wrap: wrap; gap: 7px; align-items: baseline;
 }
 
-/* --- 사진 --- */
-.shots { display: flex; flex-direction: column; gap: 14px; }
+/* --- 사진 슬라이드 --- */
+.gallery { position: relative; }
+
+.track {
+  display: flex;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  border-radius: var(--r-card);          /* 판·테두리 없이 사진만 놓는다 */
+  scrollbar-width: none;                 /* 넘김 UI 가 따로 있다 */
+}
+.track::-webkit-scrollbar { display: none; }
+.track:focus-visible { outline: 2.5px solid var(--accent); outline-offset: 3px; }
+
+/* 칸 높이를 고정해야 장마다 화면이 튀지 않는다. 사진은 그 안에서 가운데 정렬 */
+.slide {
+  flex: 0 0 100%; scroll-snap-align: center;
+  height: clamp(300px, 52vh, 560px); padding: 10px;
+}
+/* 칸을 꽉 채운 뒤 contain 으로 맞춘다 — max-height 는 세로 사진에서 칸을 넘긴다 */
+.slide img {
+  width: 100%; height: 100%; object-fit: contain;
+  border-radius: 12px; display: block;
+}
+
+.nav {
+  position: absolute; top: 50%; transform: translateY(-50%);
+  width: 40px; height: 40px; border-radius: 50%;
+  border: var(--border); background: var(--card); color: var(--ink);
+  font-size: 22px; line-height: 1; cursor: pointer;
+  box-shadow: 0 5px 16px var(--shadow);
+  transition: border-color var(--t-hover), color var(--t-hover), opacity var(--t-hover);
+}
+.nav:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+.nav:disabled { opacity: .3; cursor: default; }
+.nav.prev { left: 12px; }
+.nav.next { right: 12px; }
+
+.dots { display: flex; justify-content: center; gap: 7px; margin-top: 12px; }
+.dot {
+  width: 7px; height: 7px; padding: 0; border-radius: 50%;
+  border: none; background: var(--line); cursor: pointer;
+  transition: background var(--t-hover), width var(--t-hover);
+}
+.dot.on { width: 20px; border-radius: 999px; background: var(--accent); }
+
+.count { text-align: center; margin: 7px 0 0; font-variant-numeric: tabular-nums; }
+
 .shot {
   width: 100%; border-radius: var(--r-card); border: var(--border);
   background: var(--chip); display: block;
 }
-.shots .shot { height: auto; }
 .shot.fallback {
   aspect-ratio: 16 / 9;
   background: linear-gradient(150deg, var(--ph-a), var(--ph-b));
