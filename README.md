@@ -16,16 +16,44 @@
 
 - [기획서](docs/specs/2026-08-06-동아리웹-기획서.md)
 - [구현계획](docs/plans/2026-08-06-구현계획.md)
+- [**API 명세**](docs/api.md) ← 백엔드·프론트 공통 계약. 개발 전에 읽는다
+- [프론트엔드 디자인 기획](docs/specs/2026-08-06-프론트엔드-디자인-기획.md) · 목업 `mockups/`
 - [협업 규칙](CLAUDE.md)
 
 ## 실행
 
+### 개발 (권장) — Postgres만 도커, 앱은 로컬에서 --reload
+
 ```bash
-cp .env.example .env          # 값 채우기
-docker compose up --build     # 전체 실행
+cp .env.example .env
+docker compose up -d db
+
+cd backend
+uv sync
+uv run python seed.py                                  # 데모 데이터
+uv run uvicorn app.main:app --reload                   # :8000  (문서 /api/docs)
+
+cd ../frontend
+npm install
+npm run dev                                            # :5173  (API는 :8000 프록시)
 ```
 
-개발 모드는 [CLAUDE.md](CLAUDE.md#실행) 참고.
+### 전체 도커 (시연 직전 확인용)
+
+```bash
+docker compose up --build       # 프론트 :8080 · API :8000
+```
+
+### 데모 계정 (seed)
+
+| 계정 | 이메일 | 비밀번호 |
+|---|---|---|
+| 학생 | `26011234@mjc.ac.kr` | `test1234` |
+| 동아리장 | `24010001@mjc.ac.kr` | `test1234` |
+| 관리자 | `00000000@mjc.ac.kr` | `test1234` |
+
+스키마를 바꿨으면 `docker compose down -v` 후 DB 재생성 + `uv run python seed.py --reset`.
+(마이그레이션 도구를 쓰지 않는다 — 구현계획 §7)
 
 ## 기술 스택
 
