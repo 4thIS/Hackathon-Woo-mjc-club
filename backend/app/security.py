@@ -17,6 +17,29 @@ SESSION_COOKIE = "session"
 _serializer = URLSafeSerializer(settings.secret_key, salt="session")
 
 
+# 비밀번호 규칙 — 가입과 변경이 같은 기준을 쓴다 (한 곳에서 고친다)
+PW_MIN = 8
+PW_MAX = 72  # bcrypt 는 72바이트를 넘기면 조용히 잘라 버린다. 그 전에 막는다
+_SPECIAL = r"""!@#$%^&*()_+-=[]{};':\"|,.<>/?~`"""
+
+
+def password_problem(raw: str) -> str | None:
+    """규칙에 어긋나면 사람이 읽을 이유를, 통과하면 None 을 준다."""
+    if len(raw) < PW_MIN:
+        return f"비밀번호는 {PW_MIN}자 이상이어야 합니다."
+    if len(raw.encode()) > PW_MAX:
+        return "비밀번호가 너무 깁니다."
+    if not any(c.isalpha() for c in raw):
+        return "비밀번호에 영문을 넣어주세요."
+    if not any(c.isdigit() for c in raw):
+        return "비밀번호에 숫자를 넣어주세요."
+    if not any(c in _SPECIAL for c in raw):
+        return "비밀번호에 특수문자를 넣어주세요."
+    if " " in raw:
+        return "비밀번호에 공백은 쓸 수 없습니다."
+    return None
+
+
 def hash_password(raw: str) -> str:
     return bcrypt.hashpw(raw.encode(), bcrypt.gensalt()).decode()
 

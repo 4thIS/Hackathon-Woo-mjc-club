@@ -36,7 +36,7 @@ from app.models import (
 )
 from app.security import SESSION_COOKIE, hash_password, sign_session
 
-PW = hash_password("test1234")
+PW = hash_password("test1234!")
 
 # 실행마다 다른 대역. itertools.count 만 쓰면 프로세스가 새로 뜰 때 1부터 다시 세어
 # 지난 실행이 남긴 행과 겹친다.

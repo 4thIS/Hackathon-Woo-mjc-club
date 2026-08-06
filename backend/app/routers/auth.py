@@ -32,6 +32,7 @@ from ..security import (
     decrypt_ai_key,
     encrypt_ai_key,
     hash_password,
+    password_problem,
     sign_session,
     verify_password,
 )
@@ -179,8 +180,8 @@ def signup(body: SignupIn, db: Session = Depends(get_db)):
     # 이메일 로컬파트가 학번과 같아야 한다는 제약은 두지 않는다 — 학교 메일 주소가
     # 학번과 다른 계정(별칭·구계정)이 실제로 있다. 학번은 PK 로, 이메일은 유니크로
     # 각각 중복만 막으면 충분하다.
-    if len(body.password) < 8:
-        raise errors.ApiError(400, "WEAK_PASSWORD", "비밀번호는 8자 이상이어야 합니다.")
+    if (why := password_problem(body.password)) is not None:
+        raise errors.ApiError(400, "WEAK_PASSWORD", why)
     if body.gender not in enums.GENDERS:
         raise errors.ApiError(400, "INVALID_INPUT", "성별 값이 올바르지 않습니다.")
     if not depts.is_valid(body.dept.strip()):
@@ -281,8 +282,8 @@ def me(user: User = Depends(current_user)):
 @router.patch("/me")
 def update_me(body: UpdateMeIn, user: User = Depends(current_user), db: Session = Depends(get_db)):
     if body.password is not None:
-        if len(body.password) < 8:
-            raise errors.ApiError(400, "WEAK_PASSWORD", "비밀번호는 8자 이상이어야 합니다.")
+        if (why := password_problem(body.password)) is not None:
+            raise errors.ApiError(400, "WEAK_PASSWORD", why)
         user.pw_hash = hash_password(body.password)
 
     if body.dept is not None:

@@ -31,7 +31,7 @@ def leader(client):
     name = f"AI테스트동아리{uuid.uuid4().hex[:8]}"
     account = {
         "email": f"{sid}@mjc.ac.kr",
-        "password": "test1234",
+        "password": "test1234!",
         "student_id": sid,
         "name": "초안테스터",
         "dept": "컴퓨터공학과",
@@ -53,7 +53,7 @@ def leader(client):
         db.add(ClubMember(user_id=sid, club_id=club_id, role=enums.ROLE_LEADER))
         db.commit()
 
-    client.post("/api/auth/login", json={"email": account["email"], "password": "test1234"})
+    client.post("/api/auth/login", json={"email": account["email"], "password": "test1234!"})
     yield {"student_id": sid, "club_id": club_id}
     client.post("/api/auth/logout")
 

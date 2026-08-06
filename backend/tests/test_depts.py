@@ -25,7 +25,7 @@ def account():
     sid = f"98{uuid.uuid4().int % 100_000_000:08d}"
     yield {
         "email": f"{sid}@mjc.ac.kr",
-        "password": "test1234",
+        "password": "test1234!",
         "student_id": sid,
         "name": "테스터",
         "dept": depts.dept_names()[0],
@@ -58,7 +58,7 @@ def test_signup_rejects_dept_outside_list(client, account):
 
 def test_update_me_rejects_dept_outside_list(client, account):
     assert client.post("/api/auth/signup", json=account).status_code == 201
-    client.post("/api/auth/login", json={"email": account["email"], "password": "test1234"})
+    client.post("/api/auth/login", json={"email": account["email"], "password": "test1234!"})
 
     r = client.patch("/api/me", json={"dept": "없는학과"})
     assert r.status_code == 400

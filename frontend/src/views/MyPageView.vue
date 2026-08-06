@@ -8,6 +8,7 @@ import { useRouter } from 'vue-router'
 import api from '../api'
 import { useAuth } from '../stores/auth'
 import { GRADE_OPTIONS, gradeLabel } from '../content/grade'
+import { PW_RULES, passwordOk } from '../content/password'
 
 const auth = useAuth()
 const router = useRouter()
@@ -76,6 +77,10 @@ async function saveProfile() {
 async function savePassword() {
   pwMsg.value = ''
   pwErr.value = ''
+  if (!passwordOk(pw.next)) {
+    pwErr.value = '비밀번호는 8자 이상이며 영문·숫자·특수문자를 모두 포함해야 합니다.'
+    return
+  }
   if (pw.next !== pw.confirm) {
     pwErr.value = '새 비밀번호가 서로 다릅니다.'
     return
@@ -236,7 +241,11 @@ async function withdraw() {
           <div class="fld">
             <label for="pw1">새 비밀번호</label>
             <input id="pw1" v-model="pw.next" type="password" autocomplete="new-password" minlength="8">
-            <p class="hint">8자 이상</p>
+                          <ul class="pw-rules" aria-label="비밀번호 조건">
+                <li v-for="r in PW_RULES" :key="r.key" :class="{ ok: r.test(pw.next) }">
+                  <span aria-hidden="true">{{ r.test(pw.next) ? '✓' : '·' }}</span> {{ r.label }}
+                </li>
+              </ul>
           </div>
           <div class="fld">
             <label for="pw2">새 비밀번호 확인</label>
