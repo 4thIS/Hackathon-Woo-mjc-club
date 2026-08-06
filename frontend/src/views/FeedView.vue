@@ -139,11 +139,14 @@ async function clearQuery() {
     </p>
 
     <div v-else class="grid">
+      <!-- --i 는 '배치 안에서 몇 번째인가'다. 전체 인덱스로 늦추면 세 번째 배치의 카드가
+           1초 넘게 기다린다. 키가 글 id 라서 이미 떠 있던 카드는 다시 재생되지 않는다 —
+           검색 결과가 바뀔 때 새로 들어온 카드만 올라온다 -->
       <RouterLink
-        v-for="p in posts"
+        v-for="(p, i) in posts"
         :key="p.id"
         class="card"
-        :style="catVars(p.category)"
+        :style="{ ...catVars(p.category), '--i': i % BATCH }"
         :to="`/posts/${p.id}`">
         <div class="shot" :style="p.photo ? { backgroundImage: `url(${p.photo})` } : null">
           <span v-if="!p.photo">{{ postEmoji(p.id) }}</span>
@@ -275,6 +278,21 @@ async function clearQuery() {
   align-items: start;
 }
 
+/* 등장 — 아카이브 목록·메인 브랜드 섹션과 같은 결(흐림이 풀리며 올라온다).
+   왼쪽 위부터 60ms 씩 늦춘다 */
+@keyframes card-in {
+  from {
+    opacity: 0;
+    filter: blur(7px);
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    filter: none;
+    transform: none;
+  }
+}
+
 /* 생김새는 동아리 타임라인 카드와 맞춘다 */
 .card {
   display: block;
@@ -285,6 +303,10 @@ async function clearQuery() {
   border-radius: var(--r-card);
   overflow: hidden;
   transition: box-shadow var(--t-hover), transform var(--t-hover);
+  /* backwards — 끝난 뒤에는 애니메이션이 transform 을 붙들지 않는다.
+     both 로 두면 마지막 키프레임의 transform:none 이 호버의 들림을 이긴다 */
+  animation: card-in 0.62s cubic-bezier(0.19, 0.72, 0.28, 1) backwards;
+  animation-delay: calc(var(--i, 0) * 60ms);
 }
 .card:hover {
   box-shadow: 0 14px 34px var(--shadowUp);
@@ -419,6 +441,11 @@ async function clearQuery() {
   .tail .pulse {
     transition: none;
     animation: none;
+  }
+  .card {
+    opacity: 1;
+    filter: none;
+    transform: none;
   }
 }
 
