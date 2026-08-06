@@ -532,6 +532,27 @@ gender           남 | 여
 
 `leader_id`는 동아리장 강제 교체(기획서 §5.5). 대상은 해당 동아리 부원이어야 한다.
 
+### `GET /api/admin/clubs` — `관리자`
+
+공개 목록(`GET /clubs`)은 **활동중만** 준다. 관리자는 보관된 동아리도 봐야 하므로 별도다.
+
+```
+?q=필름           이름·분야 부분 일치
+&status=보관       운영 상태 (활동중 | 보관)
+&category=체육
+```
+
+```jsonc
+{ "total": 8, "items": [
+  { "id": 1, "name": "필름사진동아리 그늘", "category": "취미·교양",
+    "recruit_status": "모집중", "status": "활동중", "current_gen": 12,
+    "member_count": 4, "post_count": 3,
+    "leader": { "id": "24010001", "name": "이우진", "dept": "시각디자인과" } }
+] }
+```
+
+`leader`는 동아리장이 없으면 `null`이다 — 관리자가 강제 교체해야 할 대상이다 (기획서 §5.5).
+
 ### `GET /api/admin/users` — `관리자`
 
 ```

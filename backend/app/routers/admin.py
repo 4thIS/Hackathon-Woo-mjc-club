@@ -7,10 +7,10 @@ from pydantic import BaseModel
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
-from .. import enums, errors
+from .. import enums, errors, serializers
 from ..db import get_db
 from ..deps import admin_user, verified_user
-from ..models import Club, ClubApplication, ClubMember, User
+from ..models import Club, ClubApplication, ClubMember, Post, User
 from ..routers.auth import ALLOWED_DOMAINS
 from ..services import mailer
 
@@ -164,6 +164,47 @@ def admin_update_club(
 
     db.commit()
     return {"id": club.id, "status": club.status}
+
+
+@router.get("/admin/clubs")
+def list_clubs_for_admin(
+    q: str | None = None,
+    status: str | None = None,
+    category: str | None = None,
+    _: User = Depends(admin_user),
+    db: Session = Depends(get_db),
+):
+    """공개 목록은 활동중만 준다. 관리자는 보관된 동아리도 봐야 한다 (api.md §5)."""
+    stmt = select(Club)
+    if q:
+        like = f"%{q.strip()}%"
+        stmt = stmt.where(or_(Club.name.ilike(like), Club.category.ilike(like)))
+    if status:
+        stmt = stmt.where(Club.status == status)
+    if category:
+        stmt = stmt.where(Club.category == category)
+
+    clubs = db.scalars(stmt.order_by(Club.status, Club.category, Club.name)).all()
+
+    items = []
+    for club in clubs:
+        members = db.scalars(select(ClubMember).where(ClubMember.club_id == club.id)).all()
+        leader = next((m for m in members if m.role == enums.ROLE_LEADER), None)
+        items.append({
+            "id": club.id,
+            "name": club.name,
+            "category": club.category,
+            "recruit_status": club.recruit_status,
+            "status": club.status,
+            "current_gen": club.current_gen,
+            "member_count": len(members),
+            "post_count": db.scalar(
+                select(func.count()).select_from(Post).where(Post.club_id == club.id)
+            ) or 0,
+            # 비어 있으면 관리자가 강제 교체해야 할 동아리다 (기획서 §5.5)
+            "leader": serializers.user_brief(leader.user) if leader else None,
+        })
+    return {"total": len(items), "items": items}
 
 
 # ── 유저 관리 (api.md §5) ──────────────────────────────────
