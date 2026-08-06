@@ -209,8 +209,10 @@ onBeforeUnmount(() => {
 .tl-empty { text-align: center; padding: 30px 0 40px; color: var(--dim); }
 .tl-empty p { margin: 0 0 6px; }
 
+/* 세 칸을 모두 1행에 못박는다. grid-row 를 안 주면 왼쪽 행(l)에서 축이
+   자동 배치로 밀려 높이 0 인 새 행에 떨어지고, 그 구간만 세로선이 끊긴다. */
 .tl-row { display: grid; grid-template-columns: 1fr var(--axis) 1fr; margin-bottom: var(--gap); }
-.tl-row .slot { position: relative; min-width: 0; }
+.tl-row .slot { position: relative; min-width: 0; grid-row: 1; }
 .tl-row .slot.axis { grid-column: 2; }
 .tl-row.r .slot.a { grid-column: 1; }  .tl-row.r .slot.b { grid-column: 3; }
 .tl-row.l .slot.b { grid-column: 1; }  .tl-row.l .slot.a { grid-column: 3; }
@@ -236,10 +238,15 @@ onBeforeUnmount(() => {
   background: var(--accent); transform: translate(-50%, -50%);
   box-shadow: 0 0 0 4px var(--bg);
 }
-/* 축 → 카드 연결선 + 날짜 */
-.conn { position: absolute; top: 52px; width: var(--axis); height: 2px; background: var(--accent); opacity: .55; }
-.tl-row.r .conn { left: calc(var(--axis) * -1); }
-.tl-row.l .conn { right: calc(var(--axis) * -1); }
+/* 축 → 카드 연결선 + 날짜.
+   폭은 축 컬럼의 절반이다 — 마디(점)에서 카드 쪽으로만 뻗어야 한다.
+   전체 폭을 주면 점 반대편으로도 선이 삐져나온다. */
+.conn {
+  position: absolute; top: 52px; width: calc(var(--axis) / 2); height: 2px;
+  background: var(--accent); opacity: .55;
+}
+.tl-row.r .conn { left: calc(var(--axis) / -2); }
+.tl-row.l .conn { right: calc(var(--axis) / -2); }
 .conn::after {
   content: ""; position: absolute; top: 50%; width: 0; height: 0;
   border-top: 5px solid transparent; border-bottom: 5px solid transparent;
@@ -300,7 +307,10 @@ onBeforeUnmount(() => {
   .tl-row .slot.axis { grid-column: 1; }
   .tl-row.l .slot.b, .tl-row.r .slot.b { grid-column: 2; }
   .tl-row .node { left: 14px; }
-  .tl-row.l .conn, .tl-row.r .conn { left: calc(var(--axis) * -1); right: auto; }
+  /* 축이 왼쪽 14px 에 있으므로 연결선도 거기서 시작한다 (마디 반대편으로 뻗지 않게) */
+  .tl-row.l .conn, .tl-row.r .conn {
+    left: calc(14px - var(--axis)); right: auto; width: calc(var(--axis) - 14px);
+  }
   .tl-row.l .conn::after { left: auto; right: -1px; border-right: none; border-left: 8px solid var(--accent); }
   .conn .date { left: 0; transform: none; bottom: 8px; font-size: 11.5px; }
 }

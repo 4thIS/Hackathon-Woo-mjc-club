@@ -89,6 +89,7 @@ export const api = {
     transfer: (id, user_id) => post(`/clubs/${id}/transfer`, { user_id }),
     manageMembers: (id) => get(`/clubs/${id}/members/manage`),
     updateMember: (id, userId, payload) => patch(`/clubs/${id}/members/${userId}`, payload),
+    removeMember: (id, userId) => del(`/clubs/${id}/members/${userId}`),
   },
   stats: () => get('/stats'),
 

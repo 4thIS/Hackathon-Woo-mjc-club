@@ -325,7 +325,7 @@ async function withdraw() {
                 <li v-for="r in requests.join" :key="r.id">
                   <span class="nm">{{ r.club_name }}</span>
                   <span class="chip">{{ r.status }}</span>
-                  <button v-if="r.cancellable" class="linkbtn" type="button"
+                  <button v-if="r.cancellable" class="btn ghost danger sm" type="button"
                           @click="cancelRequest('join', r.id)">신청 취소</button>
                 </li>
               </ul>
@@ -338,7 +338,7 @@ async function withdraw() {
                   <span class="nm">{{ r.name }}</span>
                   <span class="chip">{{ r.status }}</span>
                   <span v-if="r.reject_reason" class="meta">{{ r.reject_reason }}</span>
-                  <button v-if="r.cancellable" class="linkbtn" type="button"
+                  <button v-if="r.cancellable" class="btn ghost danger sm" type="button"
                           @click="cancelRequest('create', r.id)">신청 취소</button>
                 </li>
               </ul>
@@ -456,10 +456,13 @@ a.nm:hover { color: var(--accent); }
   color: var(--accent); font: inherit; font-size: 13px; font-weight: 700; text-decoration: underline;
 }
 
-/* 파괴적 동작은 눈에 띄되 실수로 눌리지 않게 — 테두리만 경고색, 채움은 아님 */
-.sec.danger { border-color: var(--warnLine); }
-.danger-btn { border-color: var(--warnLine); color: var(--warnInk); }
-.btn.danger-btn:not(.ghost) { background: var(--warnInk); color: var(--card); border-color: var(--warnInk); }
+/* 취소·삭제·탈퇴 같은 되돌릴 수 없는 동작은 붉은 계열로 (디자인 기획 §4) */
+.sec.danger { border-color: var(--dangerLine); }
+.btn.danger { border-color: var(--dangerLine); color: var(--dangerInk); }
+.btn.danger:hover { background: var(--dangerBg); }
+.btn.sm { height: 30px; padding: 0 11px; font-size: 12.5px; }
+.danger-btn { border-color: var(--dangerLine); color: var(--dangerInk); }
+.btn.danger-btn:not(.ghost) { background: var(--dangerInk); color: var(--card); border-color: var(--dangerInk); }
 
 dialog { max-height: min(86vh, 760px); overflow: auto; box-shadow: 0 26px 70px var(--shadowUp); }
 dialog::backdrop { backdrop-filter: blur(3px); }
