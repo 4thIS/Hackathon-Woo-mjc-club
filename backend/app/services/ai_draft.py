@@ -40,14 +40,14 @@ def generate(api_key: str, club_name: str, category: str, memo: str | None, pdf_
         # 시연 중 게이트웨이가 죽었을 때의 탈출구 (구현계획 §6)
         return DEMO_DRAFT
 
-    # TODO(wj): httpx 로 POST {settings.ai_base_url}/chat/completions
-    #   headers = {"Authorization": f"Bearer {api_key}"}
+    # TODO(wj): httpx 로 POST {settings.ai_base_url}/chat/completions/   ← 끝 슬래시 유지
+    #   headers = {"Authorization": f"Bearer {api_key}", "User-Agent": settings.ai_user_agent}
     #   model   = settings.ai_model
-    #   ① 텍스트만으로 먼저 성공시킬 것. ② 이미지 입력은 지원 확인 후 (기획서 §7.4)
+    #   비전 지원 확인됨(2026-08-06) — 사진은 image_url 의 base64 data URI 로 넘긴다
     raise NotImplementedError("T6 — AI Gateway 호출 미구현")
 
 
 def verify_key(api_key: str) -> bool:
     """저장 전 키 유효성 확인 — 모델 목록 조회 (기획서 §4.5)."""
-    # TODO(wj): GET {settings.ai_base_url}/models 로 200 확인
+    # TODO(wj): GET {settings.ai_base_url}/models/ 로 200 확인 (UA 헤더 필수)
     raise NotImplementedError("T6 — AI 키 검증 미구현")

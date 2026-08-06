@@ -25,7 +25,13 @@ class Settings(BaseSettings):
 
     # 명지전문대학 AI Gateway (기획서 §7.0)
     ai_base_url: str = "https://factchat-cloud.mindlogic.ai/v1/gateway"
-    ai_model: str = "gpt-4o-mini"
+    ai_model: str = "claude-sonnet-5"  # 2026-08-06 스모크에서 비전까지 확인된 모델
+
+    # ⚠️ 기본 UA로 호출하면 Cloudflare 가 403(1010)으로 막는다 (backend/CLAUDE.md)
+    ai_user_agent: str = (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+        "(KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36"
+    )
 
     # 1이면 게이트웨이를 호출하지 않고 준비된 초안을 반환한다 (구현계획 §6 시연 폴백)
     demo_fallback: int = 0
