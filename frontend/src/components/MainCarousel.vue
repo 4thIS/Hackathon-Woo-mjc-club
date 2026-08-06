@@ -377,25 +377,20 @@ onBeforeUnmount(() => {
 }
 .stage.dragging { cursor: grabbing; }
 
-.band, .cards { position: absolute; inset: 0; }
-.cards { pointer-events: none; }
-
-.empty {
-  position: absolute; left: 50%; top: 46%; transform: translate(-50%, -50%);
-  margin: 0; text-align: center; font-size: 14px; color: var(--dim);
-  max-width: 34ch; pointer-events: none;
+/* 배경 — 기록의 결. 도트 그리드가 가운데만 남고 가장자리로 흐려진다.
+   토큰만 쓰므로 테마를 따라간다 (이미지 파일 없음) */
+.stage::before {
+  content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background-image: radial-gradient(circle, var(--band) 1px, transparent 1px);
+  background-size: 26px 26px;
+  opacity: .38;
+  -webkit-mask-image: radial-gradient(120% 80% at 50% 60%, #000 35%, transparent 78%);
+          mask-image: radial-gradient(120% 80% at 50% 60%, #000 35%, transparent 78%);
 }
-
-.drag-hint {
-  position: absolute; right: clamp(18px, 3.5vw, 42px); bottom: 16px;
-  font-size: 12px; color: var(--dim);
-  display: flex; align-items: center; gap: 7px;
-  z-index: 900; pointer-events: none;
-}
-.drag-hint i { font-style: normal; animation: sway 2.6s ease-in-out infinite; }
-@keyframes sway {
-  0%, 100% { transform: translateX(-3px); }
-  50% { transform: translateX(3px); }
+/* 위쪽만 살짝 눌러 헤더와의 경계를 부드럽게 한다 */
+.stage::after {
+  content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--chip) 55%, transparent), transparent 45%);
 }
 
 /* 활동 카드 — 사진 + 제목 2줄만 */

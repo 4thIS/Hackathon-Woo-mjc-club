@@ -88,6 +88,9 @@ const groups = computed(() =>
   ),
 )
 
+/* 애니메이션 재생 기준. 검색어는 빼둔다 (타이핑마다 다시 재생되면 산만하다) */
+const viewKey = computed(() => `${fCat.value}|${fRec.value}`)
+
 const untouched = computed(() => fCat.value === '전체' && fRec.value === 'all' && !q.value.trim())
 const sub = computed(() =>
   untouched.value ? `${clubs.value.length}개 동아리` : `${hit.value.length}개 찾음`,
@@ -194,7 +197,8 @@ async function clearQuery() {
       </p>
 
       <template v-else>
-        <section v-for="g in groups" :key="g.nm" class="group">
+        <section v-for="(g, i) in groups" :key="`${viewKey}-${g.nm}`"
+                 class="group" :style="{ '--i': i }">
           <h2><i :style="{ background: g.v }"></i>{{ g.nm }}</h2>
           <ul>
             <li v-for="c in g.list" :key="c.id">
@@ -442,12 +446,52 @@ async function clearQuery() {
 /* ── 우측 인덱스 ──
    흘려보내지 않고 행을 맞춘다 — 한 줄의 그룹들은 같은 높이에서 나란히 시작하고,
    다음 줄은 그 줄에서 가장 긴 그룹 아래에서 다시 나란히 시작한다 */
+/* 배경 — 메인 캐러셀과 같은 도트 격자(26px · --band).
+   목록은 가는 글씨가 촘촘한 화면이라 위쪽만 남기고 아래로 지운다 */
+.index::before {
+  content: '';
+  position: absolute;
+  inset: -18px -24px;
+  z-index: -1;
+  pointer-events: none;
+  background-image: radial-gradient(circle, var(--band) 1px, transparent 1px);
+  background-size: 26px 26px;
+  opacity: 0.34;
+  -webkit-mask-image: linear-gradient(180deg, #000 0%, #000 30%, transparent 85%);
+  mask-image: linear-gradient(180deg, #000 0%, #000 30%, transparent 85%);
+}
+
 .index {
+  position: relative;
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   column-gap: clamp(28px, 4vw, 64px);
   row-gap: 0;
   align-items: start;
+}
+
+/* 등장 — 메인 브랜드 섹션과 같은 결(흐림이 풀리며 올라온다).
+   왼쪽 열부터 차례로 60ms 씩 늦춘다 */
+@keyframes group-in {
+  from {
+    opacity: 0;
+    filter: blur(7px);
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    filter: none;
+    transform: none;
+  }
+}
+.group {
+  animation: group-in 0.62s cubic-bezier(0.19, 0.72, 0.28, 1) both;
+  animation-delay: calc(var(--i, 0) * 60ms);
+}
+@media (prefers-reduced-motion: reduce) {
+  .group {
+    animation: none;
+  }
 }
 
 /* 그룹 높이 = 36(제목) + 18 + 36n(항목) + 54(아래) = 108 + 36n → 항상 --row 의 배수.

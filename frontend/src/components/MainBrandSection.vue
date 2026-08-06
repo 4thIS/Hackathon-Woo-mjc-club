@@ -137,9 +137,8 @@ onBeforeUnmount(() => io?.disconnect())
 /* 배경이 투명한 로고다. 판·테두리 없이 그대로 놓는다.
    원본이 정사각이라 위아래 여백이 넓다 — 마크가 이전만큼 보이도록 폭을 키운다 */
 .logo-slot { justify-self: center; width: min(480px, 100%); line-height: 0; }
-/* 원본 안에서 그림이 아주 조금 아래에 있다(세로 중심이 이미지의 51.0% 지점).
-   상자만 가운데 두면 로고가 글보다 처져 보여, 그 차이만큼 끌어올린다 */
-.logo-slot img { width: 100%; height: auto; display: block; transform: translateY(-1%); }
+/* 원본 그대로 놓는다 — 위치를 옮기지 않는다 */
+.logo-slot img { width: 100%; height: auto; display: block; }
 
 .brand-txt { max-width: none; }
 .brand-txt .lead {
