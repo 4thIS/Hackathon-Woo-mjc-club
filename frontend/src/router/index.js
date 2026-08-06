@@ -8,8 +8,12 @@ const routes = [
   { path: '/clubs/:id', name: 'club', component: () => import('../views/ClubDetailView.vue'), props: true },
   { path: '/posts/:id', name: 'post', component: () => import('../views/PostDetailView.vue'), props: true },
 
-  { path: '/login', name: 'login', component: () => import('../views/LoginView.vue') },
-  { path: '/signup', name: 'signup', component: () => import('../views/SignupView.vue') },
+  // 로그인·회원가입은 모달이다 (디자인 기획 §6-2). 경로는 남겨두고 모달을 여는 쿼리로 넘긴다 —
+  // 라우터 가드와 외부에서 들어온 /login 링크가 그대로 동작해야 하기 때문이다.
+  { path: '/login', name: 'login',
+    redirect: (to) => ({ path: '/', query: { ...to.query, auth: 'login' } }) },
+  { path: '/signup', name: 'signup',
+    redirect: (to) => ({ path: '/', query: { ...to.query, auth: 'signup' } }) },
   { path: '/verify', name: 'verify', component: () => import('../views/VerifyView.vue') },
 
   { path: '/me', name: 'me', component: () => import('../views/MyPageView.vue'), meta: { auth: true } },

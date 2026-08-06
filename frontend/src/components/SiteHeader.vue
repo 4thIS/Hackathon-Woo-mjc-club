@@ -1,18 +1,29 @@
 <script setup>
 /* 모든 페이지 공통 헤더 — 디자인 기획 §4.
    로그인 후 우측이 내 정보/관리/관리자로 바뀐다 (기획서 §8 권한별). */
-import { onMounted, ref } from 'vue'
-import { RouterLink } from 'vue-router'
+import { onMounted, ref, watch } from 'vue'
+import { RouterLink, useRoute } from 'vue-router'
+import AuthDialog from './AuthDialog.vue'
 import { useAuth } from '../stores/auth'
 
 const auth = useAuth()
+const route = useRoute()
 const theme = ref('light')
+const authDlg = ref(null)   // 로그인·회원가입은 모달이다 (디자인 기획 §6-2)
 
 onMounted(() => {
   const saved = localStorage.getItem('theme')
   theme.value = saved ?? (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
   apply()
+  openFromQuery()
 })
+
+/* /login · /signup 이나 라우터 가드가 ?auth= 를 붙여 보낸다 */
+function openFromQuery() {
+  const which = route.query.auth
+  if (which === 'login' || which === 'signup') authDlg.value?.open(which)
+}
+watch(() => route.query.auth, openFromQuery)
 
 function apply() {
   document.documentElement.dataset.theme = theme.value
@@ -43,11 +54,13 @@ function toggle() {
           <RouterLink to="/me" class="btn">내 정보</RouterLink>
         </template>
         <template v-else>
-          <RouterLink to="/login" class="btn ghost">로그인</RouterLink>
-          <RouterLink to="/signup" class="btn">회원가입</RouterLink>
+          <button class="btn ghost" @click="authDlg?.open('login')">로그인</button>
+          <button class="btn" @click="authDlg?.open('signup')">회원가입</button>
         </template>
       </div>
     </div>
+
+    <AuthDialog ref="authDlg" />
   </header>
 </template>
 
