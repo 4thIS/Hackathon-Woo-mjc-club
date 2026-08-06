@@ -9,6 +9,7 @@ import { useRoute, useRouter } from 'vue-router'
 import api from '../api'
 import { useAuth } from '../stores/auth'
 import { CONSENTS } from '../content/terms'
+import { GRADE_OPTIONS } from '../content/grade'
 
 const auth = useAuth()
 const route = useRoute()
@@ -26,7 +27,15 @@ const pending = ref(false)
 const error = ref('')
 const done = ref(null)            // 가입 완료 후 인증 안내 {email, email_sent, resent}
 
-const login = reactive({ email: '', password: '' })
+const login = reactive({ mailLocal: '', domain: DOMAINS[0], password: '' })
+
+/* 학교 메일은 도메인이 둘뿐이라 고르게 한다. 기본은 @mjc.ac.kr.
+   전체 주소를 붙여넣는 사람도 있어, @ 가 들어 있으면 그대로 쓴다 */
+const loginEmail = computed(() => {
+  const local = login.mailLocal.trim()
+  if (!local) return ''
+  return local.includes('@') ? local : `${local}@${login.domain}`
+})
 const su = reactive({
   studentId: '', mailLocal: '', domain: DOMAINS[0], password: '', password2: '',
   name: '', dept: '', grade: 1, birth: '', gender: '남',
@@ -76,7 +85,7 @@ async function submitLogin() {
   error.value = ''
   pending.value = true
   try {
-    await auth.login(login.email.trim(), login.password)
+    await auth.login(loginEmail.value, login.password)
     login.password = ''
     dlg.value?.close()
     // 가드가 붙여 보낸 원래 목적지로 돌려보낸다
@@ -168,8 +177,14 @@ async function resend() {
         <template v-if="tab === 'login'">
           <div class="fld">
             <label for="li-email">학교 이메일</label>
-            <input id="li-email" v-model="login.email" type="email" autocomplete="username"
-                   placeholder="2022261026@mjc.ac.kr" required>
+            <div class="mail">
+              <input id="li-email" v-model="login.mailLocal" autocomplete="username"
+                     placeholder="2022261026" required>
+              <span class="at">@</span>
+              <select v-model="login.domain" aria-label="이메일 도메인">
+                <option v-for="d in DOMAINS" :key="d" :value="d">{{ d }}</option>
+              </select>
+            </div>
           </div>
           <div class="fld">
             <label for="li-pw">비밀번호</label>
@@ -219,10 +234,7 @@ async function resend() {
             <div class="fld">
               <label for="su-grade">학년<span class="req">*</span></label>
               <select id="su-grade" v-model="su.grade">
-                <option :value="1">1학년</option>
-                <option :value="2">2학년</option>
-                <option :value="3">3학년</option>
-                <option :value="4">4학년</option>
+                <option v-for="g in GRADE_OPTIONS" :key="g.value" :value="g.value">{{ g.label }}</option>
               </select>
             </div>
           </div>

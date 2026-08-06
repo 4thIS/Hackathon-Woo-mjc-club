@@ -7,6 +7,7 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '../api'
 import { useAuth } from '../stores/auth'
+import { GRADE_OPTIONS, gradeLabel } from '../content/grade'
 
 const auth = useAuth()
 const router = useRouter()
@@ -175,7 +176,7 @@ async function withdraw() {
     <h1 class="page-title">내 정보</h1>
     <p class="sub top">
       {{ me.name }} · {{ me.dept }}
-      <template v-if="me.grade"> · {{ me.grade }}학년</template>
+      <template v-if="me.grade"> · {{ gradeLabel(me.grade) }}</template>
       · {{ me.email }}
     </p>
 
@@ -205,10 +206,7 @@ async function withdraw() {
             <label for="grade">학년</label>
             <select id="grade" v-model="profile.grade">
               <option value="">선택 안 함</option>
-              <option :value="1">1학년</option>
-              <option :value="2">2학년</option>
-              <option :value="3">3학년</option>
-              <option :value="4">4학년</option>
+              <option v-for="g in GRADE_OPTIONS" :key="g.value" :value="g.value">{{ g.label }}</option>
             </select>
             <p class="hint">휴학·편입 등으로 학번과 학년이 다를 수 있어 직접 고칩니다.</p>
           </div>

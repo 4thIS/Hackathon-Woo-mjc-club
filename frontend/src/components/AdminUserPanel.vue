@@ -7,6 +7,7 @@
 import { onMounted, reactive, ref } from 'vue'
 import api from '../api'
 import { useAuth } from '../stores/auth'
+import { gradeLabel } from '../content/grade'
 
 const auth = useAuth()
 
@@ -110,7 +111,7 @@ const leaderOf = (u) => u.clubs.filter((c) => c.role === '동아리장')
           <span class="nm">{{ u.name }}</span>
           <span v-if="u.is_admin" class="chip adm">관리자</span>
           <span v-if="!u.email_verified" class="chip warnchip">미인증</span>
-          <span class="sub">{{ u.id }} · {{ u.dept }}<template v-if="u.grade"> · {{ u.grade }}학년</template> · {{ u.academic_status }}</span>
+          <span class="sub">{{ u.id }} · {{ u.dept }}<template v-if="u.grade"> · {{ gradeLabel(u.grade) }}</template> · {{ u.academic_status }}</span>
         </div>
 
         <div class="clubs">
