@@ -22,6 +22,59 @@ const pickedLeader = ref('')
 const busy = ref(false)
 const error = ref('')
 
+/* 동아리 정보 수정 모달 — 목록을 벗어나지 않고 그 자리에서 고친다 */
+const editDlg = ref(null)
+const editing = ref(null)
+const form = reactive({
+  purpose: '', meet_day: '', meet_time: '', meet_place: '',
+  recruit_status: '', current_gen: null,
+})
+const saving = ref(false)
+const editError = ref('')
+
+const RECRUIT = ['모집중', '모집마감', '상시모집']
+
+async function openEdit(club) {
+  editing.value = club
+  editError.value = ''
+  Object.assign(form, {
+    purpose: '', meet_day: '', meet_time: '', meet_place: '',
+    recruit_status: club.recruit_status, current_gen: club.current_gen,
+  })
+  editDlg.value?.showModal()
+  try {
+    // 목록에는 없는 소개·정기모임을 상세에서 채워 온다
+    const d = await api.clubs.detail(club.id)
+    Object.assign(form, {
+      purpose: d.purpose ?? '',
+      meet_day: d.meet_day ?? '',
+      meet_time: d.meet_time ?? '',
+      meet_place: d.meet_place ?? '',
+      recruit_status: d.recruit_status,
+      current_gen: d.current_gen,
+    })
+  } catch (e) {
+    editError.value = e.message
+  }
+}
+
+async function saveEdit() {
+  editError.value = ''
+  saving.value = true
+  try {
+    // 관리자는 동아리장 전용 API 도 통과한다 (deps.club_leader)
+    await api.clubs.update(editing.value.id, { ...form })
+    editing.value.recruit_status = form.recruit_status
+    editing.value.current_gen = form.current_gen
+    editDlg.value?.close()
+    flash(`${editing.value.name} 정보를 수정했습니다.`)
+  } catch (e) {
+    editError.value = e.message
+  } finally {
+    saving.value = false
+  }
+}
+
 function flash(text) {
   message.value = text
   setTimeout(() => { if (message.value === text) message.value = '' }, 3500)
@@ -130,7 +183,7 @@ async function transfer() {
         </div>
 
         <div class="acts">
-          <RouterLink class="btn ghost sm" :to="`/clubs/${c.id}/manage`">관리</RouterLink>
+          <button class="btn ghost sm" @click="openEdit(c)">관리</button>
           <button class="btn ghost sm" @click="openTransfer(c)">동아리장 교체</button>
           <button class="btn ghost sm" :class="{ danger: c.status !== '보관' }"
                   @click="toggleArchive(c)">
@@ -139,6 +192,65 @@ async function transfer() {
         </div>
       </li>
     </ul>
+
+    <!-- 동아리 정보 수정 -->
+    <dialog ref="editDlg" @click.self="editDlg.close()">
+      <div class="sheet-hd">
+        <h2>{{ editing?.name }}</h2>
+        <p>이름·분야·창립년도·지도교수는 개설 때 확정됩니다 (기획서 §5.1).</p>
+        <button class="x" aria-label="닫기" @click="editDlg.close()">✕</button>
+      </div>
+
+      <form class="sheet-bd" @submit.prevent="saveEdit">
+        <div class="fld">
+          <label for="ac-purpose">소개</label>
+          <textarea id="ac-purpose" v-model="form.purpose" rows="4"
+                    placeholder="어떤 활동을 하는 동아리인지"></textarea>
+        </div>
+
+        <div class="two">
+          <div class="fld">
+            <label for="ac-recruit">모집 상태</label>
+            <select id="ac-recruit" v-model="form.recruit_status">
+              <option v-for="r in RECRUIT" :key="r" :value="r">{{ r }}</option>
+            </select>
+          </div>
+          <div class="fld">
+            <label for="ac-gen">현재 기수</label>
+            <input id="ac-gen" v-model.number="form.current_gen" type="number" min="1">
+            <p class="hint">가입 승인 시 이 기수가 부여됩니다.</p>
+          </div>
+        </div>
+
+        <p class="k">정기 모임</p>
+        <div class="three">
+          <div class="fld">
+            <label for="ac-day">요일</label>
+            <input id="ac-day" v-model="form.meet_day" placeholder="수요일">
+          </div>
+          <div class="fld">
+            <label for="ac-time">시간</label>
+            <input id="ac-time" v-model="form.meet_time" placeholder="18:00">
+          </div>
+          <div class="fld">
+            <label for="ac-place">장소</label>
+            <input id="ac-place" v-model="form.meet_place" placeholder="학생회관 302">
+          </div>
+        </div>
+
+        <p v-if="editError" class="warn err">{{ editError }}</p>
+        <button class="hidden-submit" type="submit" tabindex="-1" aria-hidden="true"></button>
+      </form>
+
+      <div class="sheet-ft">
+        <RouterLink v-if="editing" class="btn ghost" :to="`/clubs/${editing.id}/manage`">
+          전체 관리 화면
+        </RouterLink>
+        <button class="btn" type="button" :disabled="saving" @click="saveEdit">
+          {{ saving ? '저장 중…' : '저장' }}
+        </button>
+      </div>
+    </dialog>
 
     <!-- 동아리장 강제 교체 (기획서 §5.5) -->
     <dialog ref="dlg" class="narrow" @click.self="dlg.close()">
@@ -223,6 +335,13 @@ dialog::backdrop { backdrop-filter: blur(3px); }
 .sheet-ft { display: flex; gap: 9px; padding: 16px 24px 24px; }
 .sheet-ft .btn { flex: 1; }
 
+.fld { margin-bottom: 14px; }
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: 0 16px; }
+.three { display: grid; grid-template-columns: 1fr 1fr 1.4fr; gap: 0 12px; }
+.k { font-size: 11px; font-weight: 700; letter-spacing: .13em; color: var(--dim); margin: 4px 0 8px; }
+.sheet-ft .btn.ghost { text-decoration: none; }
+.hidden-submit { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+
 .picks { list-style: none; margin: 0; padding: 0; }
 .pick {
   display: flex; align-items: center; gap: 9px; flex-wrap: wrap;
@@ -232,4 +351,8 @@ dialog::backdrop { backdrop-filter: blur(3px); }
 .pick input { width: auto; }
 .pnm { font-weight: 700; }
 .err { margin: 14px 0 0; }
+
+@media (max-width: 560px) {
+  .two, .three { grid-template-columns: 1fr; }
+}
 </style>
