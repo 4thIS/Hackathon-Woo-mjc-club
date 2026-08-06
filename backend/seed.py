@@ -37,15 +37,28 @@ from app.security import hash_password
 PW = hash_password("test1234")
 
 
-def u(sid: str, name: str, dept: str, *, admin: bool = False, status: str = enums.ACADEMIC_ENROLLED) -> User:
+def u(
+    sid: str,
+    name: str,
+    dept: str,
+    *,
+    grade: int | None = None,
+    admin: bool = False,
+    status: str = enums.ACADEMIC_ENROLLED,
+) -> User:
+    """학번은 10자리 숫자다 (예: 2022261026). 앞 4자리가 입학년도.
+
+    학년은 학번에서 유추하지 않는다 — 휴학·재수·편입이면 어긋난다. 본인이 고른 값이다.
+    """
     return User(
         id=sid,
         email=f"{sid}@mjc.ac.kr",
         pw_hash=PW,
         name=name,
         dept=dept,
-        birth=date(2000 + int(sid[:2]) - 19, 3, 11),
+        birth=date(int(sid[:4]) - 19, 3, 11),
         gender="남",
+        grade=grade,
         academic_status=status,
         is_admin=admin,
         email_verified=True,
@@ -53,21 +66,26 @@ def u(sid: str, name: str, dept: str, *, admin: bool = False, status: str = enum
 
 
 USERS = [
-    u("00000000", "관리자", "학생지원팀", admin=True),
-    u("24010001", "이우진", "시각디자인과"),
-    u("24010002", "김태희", "실용음악과"),
-    u("24010003", "박찬우", "컴퓨터공학과"),
-    u("26011234", "신입생", "컴퓨터공학과"),
-    u("26011235", "김서연", "간호학과"),
-    u("19010001", "졸업생", "컴퓨터공학과", status=enums.ACADEMIC_GRADUATED),
+    u("2015260001", "관리자", "학생지원팀", admin=True),
+    u("2024260001", "이우진", "시각디자인과", grade=3),
+    u("2024260002", "김태희", "실용음악과", grade=3),
+    u("2024260003", "박찬우", "컴퓨터공학과", grade=3),
+    u("2026261234", "신입생", "컴퓨터공학과", grade=1),
+    u("2026261235", "김서연", "간호학과", grade=2),  # 편입 — 학번은 26학번이지만 2학년
+    u("2019260001", "졸업생", "컴퓨터공학과", status=enums.ACADEMIC_GRADUATED),
     # 어느 동아리에도 속하지 않은 지원자들 — 시연에서 '신청자 목록 → 승인' 을 보여주려면
     # 심사중인 신청이 미리 쌓여 있어야 한다 (시연 시나리오 1:30)
-    u("26011240", "김도윤", "전기공학과"),
-    u("26011241", "이서준", "경영학과"),
-    u("26011242", "최유진", "간호학과"),
+    u("2026261240", "김도윤", "전기공학과", grade=1),
+    u("2026261241", "이서준", "경영학과", grade=1),
+    u("2025260242", "최유진", "간호학과", grade=2),
 ]
 
-APPLICANTS = ["26011240", "26011241", "26011242"]
+ADMIN_ID = "2015260001"
+LEADER_IDS = ["2024260001", "2024260002", "2024260003"]
+STUDENT_ID = "2026261234"
+STUDENT2_ID = "2026261235"
+OB_ID = "2019260001"
+APPLICANTS = ["2026261240", "2026261241", "2025260242"]
 
 CLUBS = [
     dict(name="필름사진동아리 그늘", category="취미·교양", founded_year=2014, advisor="김지훈",
@@ -172,9 +190,9 @@ JOIN_FORM_FIELDS = [
 
 # 심사중인 가입 신청 — (지원자 학번, 동아리 index, 폼 답변)
 PENDING_JOINS = [
-    ("26011240", 0, {"motive": "필름 사진을 배우고 싶어서 지원합니다.", "camera": "없습니다"}),
-    ("26011241", 0, {"motive": "동아리 전시를 보고 관심이 생겼습니다.", "camera": "펜탁스 ME"}),
-    ("26011242", 1, {}),
+    (APPLICANTS[0], 0, {"motive": "필름 사진을 배우고 싶어서 지원합니다.", "camera": "없습니다"}),
+    (APPLICANTS[1], 0, {"motive": "동아리 전시를 보고 관심이 생겼습니다.", "camera": "펜탁스 ME"}),
+    (APPLICANTS[2], 1, {}),
 ]
 
 
@@ -201,16 +219,19 @@ def main() -> None:
         db.flush()
 
         # 동아리장 3명이 8개 동아리를 나눠 맡는다
-        leaders = ["24010001", "24010002", "24010003"]
+        leaders = LEADER_IDS
         for i, club in enumerate(clubs):
             db.add(ClubMember(user_id=leaders[i % 3], club_id=club.id,
                               role=enums.ROLE_LEADER, gen=1))
-            db.add(ClubMember(user_id="26011234", club_id=club.id,
-                              role=enums.ROLE_MEMBER, gen=club.current_gen))
-            if i % 2 == 0:
-                db.add(ClubMember(user_id="26011235", club_id=club.id,
+            # ★ 학생 데모 계정을 일부러 두 곳에만 가입시킨다.
+            #   전부 부원이면 시연 0:40 '신입생이 가입 신청' 장면에서 누를 동아리가 없다.
+            if i in (2, 4):
+                db.add(ClubMember(user_id=STUDENT_ID, club_id=club.id,
                                   role=enums.ROLE_MEMBER, gen=club.current_gen))
-            db.add(ClubMember(user_id="19010001", club_id=club.id, role=enums.ROLE_MEMBER,
+            if i in (2, 6):
+                db.add(ClubMember(user_id=STUDENT2_ID, club_id=club.id,
+                                  role=enums.ROLE_MEMBER, gen=club.current_gen))
+            db.add(ClubMember(user_id=OB_ID, club_id=club.id, role=enums.ROLE_MEMBER,
                               membership=enums.MEMBERSHIP_OB, gen=max(1, (club.current_gen or 2) - 4)))
         db.flush()
 
@@ -233,9 +254,9 @@ def main() -> None:
 
         for i, p in enumerate(posts):
             if p.is_public:
-                db.add(Like(user_id="26011234", post_id=p.id))
+                db.add(Like(user_id=STUDENT_ID, post_id=p.id))
                 if i % 3 == 0:
-                    db.add(Like(user_id="26011235", post_id=p.id))
+                    db.add(Like(user_id=STUDENT2_ID, post_id=p.id))
 
         # --- 시연용 심사 대기 건 (구현계획 T7 — 빈 화면 금지) -----------------
         db.add(JoinForm(club_id=clubs[0].id, fields=JOIN_FORM_FIELDS, required=True))
@@ -245,7 +266,7 @@ def main() -> None:
 
         # 관리자 승인 장면용
         db.add(ClubApplication(
-            applicant_id="26011240",
+            applicant_id=APPLICANTS[0],
             name="독서토론회 책갈피",
             category="학술·전공",
             founded_year=2026,
@@ -254,13 +275,13 @@ def main() -> None:
         ))
 
         # 동아리장 화면의 탈퇴 요청 목록도 비지 않게 한다
-        db.add(LeaveRequest(user_id="26011235", club_id=clubs[2].id))
+        db.add(LeaveRequest(user_id=STUDENT2_ID, club_id=clubs[2].id))
 
         db.commit()
         print(f"완료 — 유저 {len(USERS)} · 동아리 {len(clubs)} · 활동글 {len(posts)}")
         print(f"        심사중 가입신청 {len(PENDING_JOINS)} · 개설신청 1 · 탈퇴요청 1 · 가입폼 1")
-        print("데모 계정: 26011234@mjc.ac.kr / test1234 (학생), 24010001@mjc.ac.kr / test1234 (동아리장)")
-        print("관리자:   00000000@mjc.ac.kr / test1234")
+        print(f"데모 계정: {STUDENT_ID}@mjc.ac.kr (학생) · {LEADER_IDS[0]}@mjc.ac.kr (동아리장)")
+        print(f"관리자:   {ADMIN_ID}@mjc.ac.kr · 비밀번호는 전부 test1234")
     finally:
         db.close()
 

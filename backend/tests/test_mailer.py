@@ -88,7 +88,7 @@ def test_send_without_sender_returns_false(monkeypatch, capsys):
 @pytest.fixture
 def unverified_user():
     db = SessionLocal()
-    uid = "88000001"
+    uid = "8800000001"
     user = User(
         id=uid,
         email=f"{uid}@mjc.ac.kr",

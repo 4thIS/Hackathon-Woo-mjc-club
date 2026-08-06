@@ -24,7 +24,7 @@ const done = ref(null)            // 가입 완료 후 인증 안내 {email, ema
 const login = reactive({ email: '', password: '' })
 const su = reactive({
   studentId: '', domain: DOMAINS[0], password: '', password2: '',
-  name: '', dept: '', birth: '', gender: '남',
+  name: '', dept: '', grade: 1, birth: '', gender: '남',
 })
 
 const suEmail = computed(() => (su.studentId ? `${su.studentId}@${su.domain}` : ''))
@@ -84,6 +84,7 @@ async function submitSignup() {
       student_id: su.studentId,
       name: su.name,
       dept: su.dept,
+      grade: Number(su.grade),
       birth: su.birth,
       gender: su.gender,
     })
@@ -145,7 +146,7 @@ async function resend() {
           <div class="fld">
             <label for="li-email">학교 이메일</label>
             <input id="li-email" v-model="login.email" type="email" autocomplete="username"
-                   placeholder="26011234@mjc.ac.kr" required>
+                   placeholder="2022261026@mjc.ac.kr" required>
           </div>
           <div class="fld">
             <label for="li-pw">비밀번호</label>
@@ -159,24 +160,37 @@ async function resend() {
           <div class="fld">
             <label for="su-sid">학번<span class="req">*</span></label>
             <div class="mail">
-              <input id="su-sid" v-model="su.studentId" inputmode="numeric" pattern="[0-9]+"
-                     placeholder="26011234" required>
+              <input id="su-sid" v-model="su.studentId" inputmode="numeric" pattern="[0-9]{10}"
+                     maxlength="10" placeholder="2022261026" required>
               <span class="at">@</span>
               <select v-model="su.domain" aria-label="이메일 도메인">
                 <option v-for="d in DOMAINS" :key="d" :value="d">{{ d }}</option>
               </select>
             </div>
-            <p class="hint">학번이 곧 이메일 주소입니다. 도메인이 달라도 한 학번으로 한 번만 가입됩니다.</p>
+            <p class="hint">
+              학번은 10자리 숫자입니다. 학번이 곧 이메일 주소이며,
+              도메인이 달라도 한 학번으로 한 번만 가입됩니다.
+            </p>
+          </div>
+
+          <div class="fld">
+            <label for="su-name">이름<span class="req">*</span></label>
+            <input id="su-name" v-model="su.name" required>
           </div>
 
           <div class="two">
             <div class="fld">
-              <label for="su-name">이름<span class="req">*</span></label>
-              <input id="su-name" v-model="su.name" required>
-            </div>
-            <div class="fld">
               <label for="su-dept">학과<span class="req">*</span></label>
               <input id="su-dept" v-model="su.dept" placeholder="컴퓨터정보과" required>
+            </div>
+            <div class="fld">
+              <label for="su-grade">학년<span class="req">*</span></label>
+              <select id="su-grade" v-model="su.grade">
+                <option :value="1">1학년</option>
+                <option :value="2">2학년</option>
+                <option :value="3">3학년</option>
+                <option :value="4">4학년</option>
+              </select>
             </div>
           </div>
 

@@ -120,21 +120,22 @@ gender           남 | 여
 {
   "email": "26011234@mjc.ac.kr",   // @mjc.ac.kr 또는 @on.mjc.ac.kr 만 허용
   "password": "……",                 // 8자 이상
-  "student_id": "26011234",        // 숫자만. 이메일 로컬파트와 일치해야 한다
+  "student_id": "2022261026",      // 숫자 10자리 고정. 이메일 로컬파트와 일치해야 한다
   "name": "박찬우",
   "dept": "컴퓨터공학과",
   "birth": "2006-03-11",
-  "gender": "남"
+  "gender": "남",
+  "grade": 1                       // 1~4. 생략하거나 null 이면 미입력
 }
 ```
 
-`201` → `{ "student_id": "26011234", "email_sent": true }`
+`201` → `{ "student_id": "2022261026", "email_sent": true }`
 
 `email_sent: false`면 SMTP가 죽은 것이다. 서버는 죽지 않고 **콘솔에 인증 링크를 출력**한다(백엔드 규칙). 프론트는 "인증 메일 발송에 실패했습니다. 운영자에게 문의하세요" 안내를 띄운다.
 
 | 에러 | code |
 |---|---|
-| 400 | `INVALID_EMAIL_DOMAIN` · `EMAIL_ID_MISMATCH` · `WEAK_PASSWORD` |
+| 400 | `INVALID_EMAIL_DOMAIN` · `INVALID_STUDENT_ID`(숫자 10자리 아님) · `EMAIL_ID_MISMATCH` · `WEAK_PASSWORD` |
 | 409 | `DUPLICATE_STUDENT_ID` (도메인이 달라도 학번이 같으면 막는다 · 기획서 §4.1) · `DUPLICATE_EMAIL` |
 
 ### `POST /api/auth/login` — `공개`
@@ -176,7 +177,7 @@ gender           남 | 여
   "dept": "컴퓨터공학과",
   "birth": "2006-03-11",
   "gender": "남",
-  "grade": 1,                       // 학번 앞 2자리로 서버가 계산
+  "grade": 1,                       // 본인이 고른 값. 미입력이면 null (§9-6)
   "academic_status": "재학",
   "email_verified": true,
   "is_admin": false,
@@ -189,12 +190,14 @@ gender           남 | 여
 ### `PATCH /api/me` — `로그인`
 
 ```jsonc
-{ "password": "새 비밀번호", "dept": "전자공학과", "academic_status": "졸업" }  // 전부 optional
+{ "password": "새 비밀번호", "dept": "전자공학과", "academic_status": "졸업", "grade": 3 }  // 전부 optional
 ```
 
 `200` → `Me`
 
 이름·학번·생년월일·성별·이메일은 **받지 않는다.** 보내면 무시한다(기획서 §4.3).
+
+`grade` 는 **보냈는지 여부**로 판단한다. 안 보내면 그대로 두고, `null` 을 명시적으로 보내면 비운다. 1~4 밖의 값은 400 `INVALID_INPUT`.
 
 | 에러 | code | 설명 |
 |---|---|---|
@@ -407,7 +410,7 @@ gender           남 | 여
 **이름 · 학과 · 학년만 내려간다.** 학번 전체·성별·생년월일은 응답에 넣지 않는다(기획서 §5.3 · §9).
 
 ```json
-[ { "id": 12, "name": "박찬우", "dept": "컴퓨터공학과", "grade": 1,
+[ { "id": 12, "name": "박찬우", "dept": "컴퓨터공학과", "grade": 1,   // 미입력이면 null
     "answers": { "motive": "…" }, "created_at": "…", "status": "심사중" } ]
 ```
 
@@ -657,6 +660,8 @@ gender           남 | 여
 | 3 | 활동 글 본문 형식 | **평문**(줄바꿈만) | 마크다운 렌더러는 시연에 이득 없음 |
 | 4 | 캐러셀 선정 기준 | **공개 글 최신순, 동아리당 1건** | 한 동아리가 독점하면 메시지가 죽는다 |
 | 5 | 비공개 글 무권한 접근 | **404** (403 아님) | 존재 자체를 숨긴다 |
+| 6 | 학년을 어떻게 얻는가 | **본인이 고르고 고친다**(가입 시 입력 · `PATCH /api/me`). 서버가 학번에서 계산하지 않는다 | 휴학·재수·편입이면 학번과 학년이 어긋난다. 학년은 동아리장이 신청자를 심사할 때 보는 **유일한 학적 정보**라 틀리면 판단이 틀어진다 |
+| 7 | 학번 형식 | **숫자 10자리 고정** (예: `2022261026`) | 명지전문대 학번 체계. 앞 4자리가 입학년도지만 학년 계산에는 쓰지 않는다 |
 
 ## 10. 이 명세에서 뺀 것
 

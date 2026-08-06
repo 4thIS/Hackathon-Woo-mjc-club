@@ -24,7 +24,7 @@ def client():
 @pytest.fixture
 def account():
     """매번 새 학번. 테스트가 서로 간섭하지 않는다."""
-    sid = f"99{uuid.uuid4().int % 1_000_000:06d}"
+    sid = f"99{uuid.uuid4().int % 100_000_000:08d}"
     yield {
         "email": f"{sid}@mjc.ac.kr",
         "password": "test1234",
@@ -106,8 +106,8 @@ def test_verify_rejects_garbage_token(client):
 @pytest.mark.parametrize(
     ("patch", "code"),
     [
-        ({"email": "26011234@gmail.com"}, "INVALID_EMAIL_DOMAIN"),
-        ({"student_id": "12345678"}, "EMAIL_ID_MISMATCH"),  # 이메일 로컬파트와 불일치
+        ({"email": "2026261234@gmail.com"}, "INVALID_EMAIL_DOMAIN"),
+        ({"student_id": "1234567890"}, "EMAIL_ID_MISMATCH"),  # 이메일 로컬파트와 불일치
         ({"password": "short"}, "WEAK_PASSWORD"),
         ({"gender": "기타"}, "INVALID_INPUT"),
     ],
@@ -222,3 +222,37 @@ def test_logout_clears_session(client, account):
 
     client.post("/api/auth/logout")
     assert client.get("/api/me").status_code == 401
+
+
+# ── 학년 (학번에서 유추하지 않는다) ─────────────────────────
+
+
+def test_signup_stores_given_grade(client, account):
+    """학번 앞자리로 계산하지 않는다 — 휴학·재수·편입이면 어긋나기 때문이다."""
+    r = client.post("/api/auth/signup", json={**account, "grade": 2})
+    assert r.status_code == 201
+
+    client.post("/api/auth/login", json={"email": account["email"], "password": account["password"]})
+    assert client.get("/api/me").json()["grade"] == 2
+    client.post("/api/auth/logout")
+
+
+def test_signup_rejects_bad_student_id(client, account):
+    short = {**account, "student_id": "12345", "email": "12345@mjc.ac.kr"}
+    r = client.post("/api/auth/signup", json=short)
+    assert r.status_code == 400
+    assert r.json()["detail"]["code"] == "INVALID_STUDENT_ID"
+
+
+def test_grade_is_editable_and_clearable(client, account):
+    client.post("/api/auth/signup", json={**account, "grade": 1})
+    client.post("/api/auth/login", json={"email": account["email"], "password": account["password"]})
+
+    assert client.patch("/api/me", json={"grade": 3}).json()["grade"] == 3
+    # 명시적 null 은 "비우기". 아예 안 보내면 그대로 둔다
+    assert client.patch("/api/me", json={"grade": None}).json()["grade"] is None
+    assert client.patch("/api/me", json={"dept": "전자과"}).json()["grade"] is None
+
+    r = client.patch("/api/me", json={"grade": 9})
+    assert r.status_code == 400
+    client.post("/api/auth/logout")

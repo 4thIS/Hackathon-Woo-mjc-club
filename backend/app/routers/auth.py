@@ -30,6 +30,8 @@ from ..services import ai_draft, mailer
 router = APIRouter(tags=["auth"])
 
 ALLOWED_DOMAINS = ("mjc.ac.kr", "on.mjc.ac.kr")
+STUDENT_ID_LEN = 10  # 명지전문대 학번 (예: 2022261026)
+GRADES = (1, 2, 3, 4)
 TOKEN_TTL = timedelta(hours=24)  # api.md 에 미정 — 24시간. 만료돼도 재발송으로 복구된다
 RESEND_COOLDOWN = timedelta(seconds=60)  # 실제 발송이 켜진 뒤의 남용 방지
 LEAVE_AUTO_DAYS = 7  # 기획서 §5.4
@@ -46,6 +48,7 @@ class SignupIn(BaseModel):
     dept: str
     birth: date
     gender: str
+    grade: int | None = None  # 1~4. 학번에서 유추하지 않는다
 
 
 class LoginIn(BaseModel):
@@ -68,6 +71,9 @@ class UpdateMeIn(BaseModel):
     password: str | None = None
     dept: str | None = None
     academic_status: str | None = None
+    # 학년은 본인만 안다 — 휴학·재수·편입이면 학번과 어긋난다.
+    # null 을 명시적으로 보내면 학년을 비운다 (model_fields_set 으로 구분한다)
+    grade: int | None = None
 
 
 class AiKeyIn(BaseModel):
@@ -156,14 +162,18 @@ def signup(body: SignupIn, db: Session = Depends(get_db)):
         raise errors.ApiError(
             400, "INVALID_EMAIL_DOMAIN", "@mjc.ac.kr 또는 @on.mjc.ac.kr 주소만 가입할 수 있습니다."
         )
-    if not body.student_id.isdigit():
-        raise errors.ApiError(400, "INVALID_INPUT", "학번은 숫자만 입력합니다.")
+    if not (body.student_id.isdigit() and len(body.student_id) == STUDENT_ID_LEN):
+        raise errors.ApiError(
+            400, "INVALID_STUDENT_ID", f"학번은 숫자 {STUDENT_ID_LEN}자리입니다."
+        )
     if local != body.student_id:
         raise errors.ApiError(400, "EMAIL_ID_MISMATCH", "이메일 주소와 학번이 일치하지 않습니다.")
     if len(body.password) < 8:
         raise errors.ApiError(400, "WEAK_PASSWORD", "비밀번호는 8자 이상이어야 합니다.")
     if body.gender not in enums.GENDERS:
         raise errors.ApiError(400, "INVALID_INPUT", "성별 값이 올바르지 않습니다.")
+    if body.grade is not None and body.grade not in GRADES:
+        raise errors.ApiError(400, "INVALID_INPUT", "학년은 1~4 중에서 고릅니다.")
 
     # 학번이 PK다. 도메인이 달라도 같은 학번이면 여기서 막힌다 (기획서 §4.1)
     if db.get(User, body.student_id) is not None:
@@ -179,6 +189,7 @@ def signup(body: SignupIn, db: Session = Depends(get_db)):
         dept=body.dept.strip(),
         birth=body.birth,
         gender=body.gender,
+        grade=body.grade,
     )
     db.add(user)
     db.commit()
@@ -266,6 +277,13 @@ def update_me(body: UpdateMeIn, user: User = Depends(current_user), db: Session 
         if not dept:
             raise errors.ApiError(400, "INVALID_INPUT", "학과를 입력해주세요.")
         user.dept = dept
+
+    # 학년은 본인만 안다. `grade` 를 **보냈는지**로 판단한다 —
+    # 안 보내면 그대로 두고, null 을 보내면 비운다 (다른 필드와 달리 비우기가 유효한 값이다)
+    if "grade" in body.model_fields_set:
+        if body.grade is not None and body.grade not in GRADES:
+            raise errors.ApiError(400, "INVALID_INPUT", "학년은 1~4 중에서 고릅니다.")
+        user.grade = body.grade
 
     if body.academic_status is not None:
         status = body.academic_status
