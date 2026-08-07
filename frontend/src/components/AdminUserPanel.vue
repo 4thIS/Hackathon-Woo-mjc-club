@@ -4,7 +4,7 @@
  * 기획서 §4.3 이 잠긴 필드에 대해 "변경이 필요하면 관리자 문의" 라고 안내한다.
  * 그 문의를 받아주는 화면이 여기다. 학번(PK)만 못 바꾼다.
  */
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import api from '../api'
 import { useAuth } from '../stores/auth'
 import { gradeLabel } from '../content/grade'
@@ -20,6 +20,37 @@ const message = ref('')
 /* 학과는 목록에서 고른다 — 관리자도 자유 입력하지 않는다 (서버가 막는다) */
 const deptList = ref([])
 api.depts().then((items) => { deptList.value = items })
+
+/* 삭제는 되돌릴 수 없다. 학번을 직접 치게 해서 한 번 더 확인한다 */
+const delDlg = ref(null)
+const deleting = ref(null)
+const delTyped = ref('')
+const delBusy = ref(false)
+const delError = ref('')
+const delReady = computed(() => delTyped.value.trim() === (deleting.value?.id ?? ''))
+
+function openDelete(user) {
+  deleting.value = user
+  delTyped.value = ''
+  delError.value = ''
+  delDlg.value?.showModal()
+}
+
+async function confirmDelete() {
+  if (!delReady.value || delBusy.value) return
+  delBusy.value = true
+  delError.value = ''
+  try {
+    await api.admin.deleteUser(deleting.value.id)
+    delDlg.value?.close()
+    flash(`${deleting.value.name} 계정을 삭제했습니다. 활동 기록은 남습니다.`)
+    await load()
+  } catch (e) {
+    delError.value = e.message
+  } finally {
+    delBusy.value = false
+  }
+}
 
 const dlg = ref(null)
 const editing = ref(null)      // 원본
@@ -125,8 +156,38 @@ const leaderOf = (u) => u.clubs.filter((c) => c.role === '동아리장')
         </div>
 
         <button class="btn ghost sm" @click="edit(u)">수정</button>
+        <button class="btn ghost sm del" @click="openDelete(u)">삭제</button>
       </li>
     </ul>
+
+    <!-- 삭제 확인 — 학번을 직접 쳐야 지워진다 -->
+    <dialog ref="delDlg" class="narrow" @click.self="delDlg.close()">
+      <div class="sheet-hd">
+        <h2>계정을 삭제할까요?</h2>
+        <p>되돌릴 수 없습니다.</p>
+      </div>
+      <div class="sheet-bd">
+        <p class="warn">
+          <b>{{ deleting?.name }}</b>({{ deleting?.id }}) 의 계정과 동아리 소속,
+          가입·탈퇴·개설 신청, 좋아요가 지워집니다.
+        </p>
+        <p class="hint">
+          <b>활동 기록은 남습니다.</b> 기록은 동아리의 자산이라 글은 그대로 두고
+          작성자만 ‘탈퇴한 회원’으로 바뀝니다.
+        </p>
+        <div class="fld">
+          <label for="del-id">확인을 위해 학번을 입력하세요</label>
+          <input id="del-id" v-model="delTyped" :placeholder="deleting?.id" autocomplete="off">
+        </div>
+        <p v-if="delError" class="warn">{{ delError }}</p>
+      </div>
+      <div class="sheet-ft">
+        <button class="btn ghost" @click="delDlg.close()">취소</button>
+        <button class="btn del-go" :disabled="!delReady || delBusy" @click="confirmDelete">
+          {{ delBusy ? '삭제 중…' : '영구 삭제' }}
+        </button>
+      </div>
+    </dialog>
 
     <!-- 수정 모달 -->
     <dialog ref="dlg" @click.self="dlg.close()">
@@ -203,6 +264,12 @@ const leaderOf = (u) => u.clubs.filter((c) => c.role === '동아리장')
 </template>
 
 <style scoped>
+/* 삭제는 되돌릴 수 없다 — 수정(중립)과 색으로 가른다 */
+.btn.sm.del { border-color: var(--dangerLine); color: var(--dangerInk); }
+.btn.sm.del:hover { background: var(--dangerBg); }
+.btn.del-go { background: var(--dangerInk); color: var(--onAccent); border-color: transparent; }
+.btn.del-go:disabled { opacity: .45; }
+
 .bar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 16px; }
 .bar input { flex: 1; min-width: 200px; }
 .bar select { width: auto; }

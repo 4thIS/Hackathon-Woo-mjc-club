@@ -21,6 +21,7 @@ from ..models import (
     Post,
     User,
 )
+from ..routers import auth
 from ..routers.auth import ALLOWED_DOMAINS
 from ..services import mailer
 
@@ -206,6 +207,46 @@ def delete_club(club_id: int, admin: User = Depends(admin_user), db: Session = D
         db.query(model).filter(cond).delete(synchronize_session=False)
 
     db.delete(club)
+    db.commit()
+    return Response(status_code=204)
+
+
+@router.delete("/admin/users/{user_id}", status_code=204)
+def delete_user(user_id: str, admin: User = Depends(admin_user), db: Session = Depends(get_db)):
+    """계정을 지운다. **되돌릴 수 없다.**
+
+    본인 탈퇴와 같은 규칙을 쓴다(auth.purge_user) — 소속·신청·좋아요는 지우고
+    **활동 글은 남긴다.** 기록은 동아리의 자산이라 작성자만 비우고 '탈퇴한 회원' 으로 뜬다.
+
+    막는 경우가 셋이다. 지우고 나면 되돌릴 수 없으므로 미리 걸러낸다:
+      - 자기 자신 (실수로 로그인 수단을 잃는다)
+      - 동아리장 (그 동아리 운영이 멈춘다 — 먼저 위임하거나 강제 교체한다)
+      - 마지막 관리자 (아무도 관리 화면에 들어갈 수 없게 된다)
+    """
+    target = db.get(User, user_id)
+    if target is None:
+        raise errors.not_found("유저를 찾을 수 없습니다.")
+
+    if target.id == admin.id:
+        raise errors.ApiError(
+            409, "CANNOT_DELETE_SELF", "본인 계정은 여기서 지울 수 없습니다. 내 정보에서 탈퇴해주세요."
+        )
+
+    led = auth.leading_clubs(db, target.id)
+    if led:
+        names = " · ".join(c.name for c in led)
+        raise errors.ApiError(
+            409,
+            "LEADER_CANNOT_LEAVE",
+            f"{names} 의 동아리장입니다. 동아리장을 먼저 교체해주세요.",
+        )
+
+    if auth.is_last_admin(db, target):
+        raise errors.ApiError(
+            409, "LAST_ADMIN", "마지막 관리자입니다. 다른 관리자를 먼저 지정해주세요."
+        )
+
+    auth.purge_user(db, target)
     db.commit()
     return Response(status_code=204)
 
