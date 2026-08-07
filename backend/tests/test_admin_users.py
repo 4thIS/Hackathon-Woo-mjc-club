@@ -139,3 +139,66 @@ def test_unknown_user_is_404(client, make_user, auth_cookie):
     admin = make_user(admin=True)
     r = client.patch("/api/admin/users/00000001", json={"dept": "X"}, cookies=auth_cookie(admin))
     assert r.status_code == 404
+
+
+# ── 유저 삭제 ──────────────────────────────────────────────
+
+
+def test_delete_user_keeps_posts_but_clears_the_author(
+    client, make_user, make_club, join_club, auth_cookie
+):
+    """활동 기록은 동아리의 자산이다 — 계정을 지워도 글은 남고 작성자만 비운다."""
+    from datetime import date
+
+    from app.db import SessionLocal
+    from app.models import ClubMember, Post, User
+
+    admin = make_user(admin=True)
+    leader = make_user(verified=True)
+    member = make_user(verified=True)
+    club = make_club()
+    join_club(leader, club, role="동아리장")
+    join_club(member, club)
+
+    with SessionLocal() as db:
+        p = Post(club_id=club.id, author_id=member.id, title="글", body="본문",
+                 photos=[], activity_date=date.today(), tags=[], is_public=True)
+        db.add(p)
+        db.commit()
+        post_id = p.id
+
+    r = client.delete(f"/api/admin/users/{member.id}", cookies=auth_cookie(admin))
+    assert r.status_code == 204
+
+    with SessionLocal() as db:
+        assert db.get(User, member.id) is None
+        assert db.query(ClubMember).filter(ClubMember.user_id == member.id).count() == 0
+        kept = db.get(Post, post_id)
+        assert kept is not None and kept.author_id is None   # 글은 남고 작성자만 비었다
+
+
+def test_delete_user_blocks_leader_self_and_last_admin(
+    client, make_user, make_club, join_club, auth_cookie
+):
+    admin = make_user(admin=True)
+    leader = make_user(verified=True)
+    club = make_club()
+    join_club(leader, club, role="동아리장")
+
+    lead_cookie = auth_cookie(admin)
+
+    # 동아리장은 못 지운다
+    r = client.delete(f"/api/admin/users/{leader.id}", cookies=lead_cookie)
+    assert r.status_code == 409
+    assert r.json()["detail"]["code"] == "LEADER_CANNOT_LEAVE"
+
+    # 자기 자신도 못 지운다
+    r = client.delete(f"/api/admin/users/{admin.id}", cookies=lead_cookie)
+    assert r.status_code == 409
+    assert r.json()["detail"]["code"] == "CANNOT_DELETE_SELF"
+
+
+def test_delete_user_requires_admin(client, make_user, auth_cookie):
+    user = make_user(verified=True)
+    victim = make_user(verified=True)
+    assert client.delete(f"/api/admin/users/{victim.id}", cookies=auth_cookie(user)).status_code == 403

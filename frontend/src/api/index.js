@@ -133,6 +133,7 @@ export const api = {
     deleteClub: (id) => del(`/admin/clubs/${id}`),
     users: (params) => get('/admin/users' + qs(params)),
     updateUser: (id, payload) => patch(`/admin/users/${id}`, payload),
+    deleteUser: (id) => del(`/admin/users/${id}`),
     clubs: (params) => get('/admin/clubs' + qs(params)),
   },
 

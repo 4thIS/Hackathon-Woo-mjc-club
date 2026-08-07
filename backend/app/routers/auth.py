@@ -44,7 +44,9 @@ ALLOWED_DOMAINS = ("mjc.ac.kr", "on.mjc.ac.kr")
 STUDENT_ID_LEN = 10  # 명지전문대 학번 (예: 2022261026)
 GRADES = (1, 2, 3, 4)
 TOKEN_TTL = timedelta(hours=24)  # api.md 에 미정 — 24시간. 만료돼도 재발송으로 복구된다
-RESEND_COOLDOWN = timedelta(seconds=60)  # 실제 발송이 켜진 뒤의 남용 방지
+# 재발송 간격. 60초면 몇 분 만지작거리는 사이 여러 통이 나가고, 무료 Gmail 의
+# 하루 한도를 소진하면 그 뒤로는 아무에게도 메일이 가지 않는다.
+RESEND_COOLDOWN = timedelta(minutes=3)
 LEAVE_AUTO_DAYS = 7  # 기획서 §5.4
 
 
@@ -456,40 +458,30 @@ class WithdrawIn(BaseModel):
     password: str
 
 
-@router.delete("/me", status_code=204)
-def withdraw(body: WithdrawIn, user: User = Depends(current_user), db: Session = Depends(get_db)):
-    """계정을 지운다. **활동 글은 남긴다** — 기록은 동아리의 자산이다 (api.md §2).
-
-    되돌릴 수 없으므로 비밀번호를 다시 확인한다.
-    """
-    if not verify_password(body.password, user.pw_hash):
-        raise errors.ApiError(403, "INVALID_PASSWORD", "비밀번호가 올바르지 않습니다.")
-
-    # 동아리장이 사라지면 그 동아리가 마비된다. 졸업과 같은 불변식이다 (기획서 §4.3, §5.5)
-    led = db.scalars(
+def leading_clubs(db: Session, user_id: str) -> list[Club]:
+    """이 사람이 동아리장인 동아리들. 비어 있지 않으면 계정을 지울 수 없다."""
+    return list(db.scalars(
         select(Club)
         .join(ClubMember, ClubMember.club_id == Club.id)
-        .where(ClubMember.user_id == user.id, ClubMember.role == enums.ROLE_LEADER)
-    ).all()
-    if led:
-        names = " · ".join(c.name for c in led)
-        raise errors.ApiError(
-            409,
-            "LEADER_CANNOT_LEAVE",
-            f"{names} 의 동아리장입니다. 먼저 동아리장을 위임해주세요.",
-        )
+        .where(ClubMember.user_id == user_id, ClubMember.role == enums.ROLE_LEADER)
+    ).all())
 
-    if user.is_admin:
-        others = db.scalar(
-            select(func.count()).select_from(User)
-            .where(User.is_admin.is_(True), User.id != user.id)
-        )
-        if not others:
-            raise errors.ApiError(
-                409, "LAST_ADMIN", "마지막 관리자입니다. 다른 관리자를 먼저 지정해주세요."
-            )
 
-    # 활동 글은 남기고 작성자만 비운다 (모델 주석 참고)
+def is_last_admin(db: Session, user: User) -> bool:
+    if not user.is_admin:
+        return False
+    others = db.scalar(
+        select(func.count()).select_from(User).where(User.is_admin.is_(True), User.id != user.id)
+    )
+    return not others
+
+
+def purge_user(db: Session, user: User) -> None:
+    """계정과 딸린 것을 지운다. **활동 글은 남긴다** — 기록은 동아리의 자산이다.
+
+    본인 탈퇴(DELETE /me)와 관리자 삭제(DELETE /admin/users/{id})가 같은 규칙을 쓴다.
+    두 벌로 두면 한쪽만 고쳐져 데이터가 어긋난다.
+    """
     for post in db.scalars(select(Post).where(Post.author_id == user.id)):
         post.author_id = None
 
@@ -504,6 +496,30 @@ def withdraw(body: WithdrawIn, user: User = Depends(current_user), db: Session =
         db.query(model).filter(cond).delete(synchronize_session=False)
 
     db.delete(user)
+
+
+@router.delete("/me", status_code=204)
+def withdraw(body: WithdrawIn, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    """계정을 지운다. **활동 글은 남긴다** — 기록은 동아리의 자산이다 (api.md §2).
+
+    되돌릴 수 없으므로 비밀번호를 다시 확인한다.
+    """
+    if not verify_password(body.password, user.pw_hash):
+        raise errors.ApiError(403, "INVALID_PASSWORD", "비밀번호가 올바르지 않습니다.")
+
+    # 동아리장이 사라지면 그 동아리가 마비된다. 졸업과 같은 불변식이다 (기획서 §4.3, §5.5)
+    led = leading_clubs(db, user.id)
+    if led:
+        names = " · ".join(c.name for c in led)
+        raise errors.ApiError(
+            409, "LEADER_CANNOT_LEAVE", f"{names} 의 동아리장입니다. 먼저 동아리장을 위임해주세요."
+        )
+    if is_last_admin(db, user):
+        raise errors.ApiError(
+            409, "LAST_ADMIN", "마지막 관리자입니다. 다른 관리자를 먼저 지정해주세요."
+        )
+
+    purge_user(db, user)
     db.commit()
 
     resp = Response(status_code=204)

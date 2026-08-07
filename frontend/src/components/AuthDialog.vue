@@ -4,7 +4,7 @@
  * 둘을 한 모달의 탭으로 둔다. 보던 화면을 벗어나지 않아야 동아리를 보다가
  * 가입 버튼을 눌렀을 때 흐름이 끊기지 않는다.
  */
-import { computed, reactive, ref } from 'vue'
+import { computed, onBeforeUnmount, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import api from '../api'
 import { useAuth } from '../stores/auth'
@@ -133,10 +133,38 @@ async function submitSignup() {
   }
 }
 
+/* 서버 쿨다운은 3분이다. 버튼이 아무 반응도 없으면 사용자는 계속 누르고,
+   그만큼 진짜로 메일이 나간다 — 누른 뒤에는 남은 시간을 보여주고 잠근다 */
+const RESEND_WAIT = 180   // 서버 쿨다운(3분)과 맞춘다
+const resendLeft = ref(0)
+let resendTimer = null
+
+/* 3분을 초로만 보여주면 읽기 불편하다 — 1분 넘으면 분·초로 */
+const resendLabel = computed(() => {
+  const s = resendLeft.value
+  return s >= 60 ? `${Math.floor(s / 60)}분 ${String(s % 60).padStart(2, '0')}초` : `${s}초`
+})
+
 async function resend() {
-  await api.auth.resendVerification(done.value.email)
-  done.value = { ...done.value, resent: true }
+  if (resendLeft.value > 0 || pending.value) return
+  pending.value = true
+  try {
+    await api.auth.resendVerification(done.value.email)
+    done.value = { ...done.value, resent: true }
+    resendLeft.value = RESEND_WAIT
+    clearInterval(resendTimer)
+    resendTimer = setInterval(() => {
+      resendLeft.value -= 1
+      if (resendLeft.value <= 0) clearInterval(resendTimer)
+    }, 1000)
+  } catch (e) {
+    error.value = e.message
+  } finally {
+    pending.value = false
+  }
 }
+
+onBeforeUnmount(() => clearInterval(resendTimer))
 </script>
 
 <template>
@@ -160,7 +188,9 @@ async function resend() {
         <p v-if="done.resent" class="privacy">인증 메일을 다시 보냈습니다.</p>
       </div>
       <div class="sheet-ft">
-        <button class="btn ghost" @click="resend">인증 메일 다시 보내기</button>
+        <button class="btn ghost" :disabled="resendLeft > 0 || pending" @click="resend">
+          {{ resendLeft > 0 ? `다시 보내기 (${resendLabel})` : '인증 메일 다시 보내기' }}
+        </button>
         <button class="btn" @click="switchTo('login'); done = null">로그인하기</button>
       </div>
     </template>

@@ -3,7 +3,7 @@
  *
  * 구역: 인증 배너 · 프로필 · 비밀번호 · AI 키 · 내 동아리 · 신청 현황
  */
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '../api'
 import { useAuth } from '../stores/auth'
@@ -123,10 +123,30 @@ async function removeKey() {
   }
 }
 
+/* 서버 쿨다운 3분. 버튼이 잠기지 않으면 눌린 만큼 메일이 나간다 */
+const RESEND_WAIT = 180   // 서버 쿨다운(3분)과 맞춘다
+const resendLeft = ref(0)
+let resendTimer = null
+
+/* 3분을 초로만 보여주면 읽기 불편하다 — 1분 넘으면 분·초로 */
+const resendLabel = computed(() => {
+  const s = resendLeft.value
+  return s >= 60 ? `${Math.floor(s / 60)}분 ${String(s % 60).padStart(2, '0')}초` : `${s}초`
+})
+
 async function resendVerification() {
+  if (resendLeft.value > 0) return
   await api.auth.resendVerification(me.value.email)
   resent.value = true
+  resendLeft.value = RESEND_WAIT
+  clearInterval(resendTimer)
+  resendTimer = setInterval(() => {
+    resendLeft.value -= 1
+    if (resendLeft.value <= 0) clearInterval(resendTimer)
+  }, 1000)
 }
+
+onBeforeUnmount(() => clearInterval(resendTimer))
 
 async function cancelRequest(kind, id) {
   if (kind === 'join') await api.joinRequests.cancel(id)
@@ -187,10 +207,15 @@ async function withdraw() {
 
     <!-- 미인증 안내 -->
     <p v-if="!me.email_verified" class="warn banner">
-      <template v-if="resent">인증 메일을 다시 보냈습니다. 받은편지함을 확인해주세요.</template>
+      <template v-if="resent">
+        인증 메일을 다시 보냈습니다. 받은편지함을 확인해주세요.
+        <template v-if="resendLeft > 0"> ({{ resendLabel }} 뒤 다시 보낼 수 있습니다)</template>
+      </template>
       <template v-else>
         이메일 인증 전에는 가입 신청과 글 작성을 할 수 없습니다.
-        <button class="linkbtn" type="button" @click="resendVerification">인증 메일 다시 받기</button>
+        <button class="linkbtn" type="button" :disabled="resendLeft > 0" @click="resendVerification">
+          인증 메일 다시 받기
+        </button>
       </template>
     </p>
 
